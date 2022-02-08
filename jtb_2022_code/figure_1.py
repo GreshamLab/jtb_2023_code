@@ -85,8 +85,8 @@ def plot_figure_1(sc_data, save=True):
     #fig.tight_layout()    
 
     if save:
-        fig.savefig(FIGURE_1_FILE_NAME + ".png")
-        fig.savefig(FIGURE_1_FILE_NAME + ".pdf")
+        fig.savefig(FIGURE_1_FILE_NAME + ".png", facecolor="white")
+        fig.savefig(FIGURE_1_FILE_NAME + ".pdf", facecolor="white")
 
     return fig
 

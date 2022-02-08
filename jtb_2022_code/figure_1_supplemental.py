@@ -192,7 +192,6 @@ def figure_1_supplement_1_plot(data, save=True):
 
     if save:
         fig.savefig(FIGURE_1_1_SUPPLEMENTAL_FILE_NAME + ".png", facecolor='white')
-        fig.savefig(FIGURE_1_1_SUPPLEMENTAL_FILE_NAME + ".pdf", facecolor='white')
 
     return fig
 
@@ -322,6 +321,5 @@ def figure_1_supplement_2_plot(data, save=True):
 
     if save:
         fig.savefig(FIGURE_1_2_SUPPLEMENTAL_FILE_NAME + ".png", facecolor='white')
-        fig.savefig(FIGURE_1_2_SUPPLEMENTAL_FILE_NAME + ".pdf", facecolor='white')
 
     return fig

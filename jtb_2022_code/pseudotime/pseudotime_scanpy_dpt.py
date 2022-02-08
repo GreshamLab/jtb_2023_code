@@ -24,6 +24,11 @@ def _do_dpt(data, npcs, nns, n_dcs=15):
     else:
         print("\tPreprocessing PCA")
         _sc.pp.pca(data, n_comps=npcs)
+        
+    do_pca_pt(data)
+    # Get a root cell
+    data.uns['iroot'] = data.obs[PCA_PT].argmin()
+    print(f"\tSelected root cell: {data.uns['iroot']}")
 
     with _parallel_backend("loky", inner_max_num_threads=1):
         _sc.pp.neighbors(data, n_neighbors=nns, n_pcs=npcs)
@@ -42,7 +47,7 @@ def _dpt_by_group(adata, npc=50, nns=15, n_comps=15, layer="counts"):
             s_idx &= adata.obs['Gene'] == g
 
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
-            _do_dpt(sdata, npcs, nns, n_dcs=n_comps)
+            _do_dpt(sdata, npc, nns, n_dcs=n_comps)
             
             pt[s_idx] = sdata.obs[DPT_OBS_COL]
             

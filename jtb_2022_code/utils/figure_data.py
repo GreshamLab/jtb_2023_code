@@ -13,6 +13,7 @@ class FigureSingleCellData:
     
     _all_data = None
     _expt_data = None
+    _expt_keys = None
     
     expt_cats = [1, 2]
     gene_cats = ["WT", "fpr1"]       
@@ -29,6 +30,10 @@ class FigureSingleCellData:
     @property
     def expt_data(self):    
         return self._expt_data
+    
+    @property
+    def expts(self):
+        return self._expt_keys
     
     @property
     def has_pca(self):
@@ -99,8 +104,10 @@ class FigureSingleCellData:
             return
         
         _expt_data = {}
+        _expt_keys = []
         
         for k, v in self.expt_files.items():
+            _expt_keys.append(k)
             if _os.path.exists(v):
                 if VERBOSE:
                     print(f"Reading Single Cell Experiment Data from {v}")
@@ -113,6 +120,7 @@ class FigureSingleCellData:
                                               (self.all_data.obs["Gene"] == g), :].copy()
         
         self._expt_data = _expt_data
+        self._expt_keys = _expt_keys
         
     
     def save(self):
@@ -130,6 +138,20 @@ class FigureSingleCellData:
                     print(f"Writing Single Cell Data to {v}")
                 self.expt_data[k].write(v)
             
+    
+    def load_pseudotime(self, files=PSEUDOTIME_FILES):
+        
+        for k, (fn, has_idx) in files.items():
+            if k not in self.all_data.obsm:
+                loaded = _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
+                loaded.index = loaded.index.astype(str)
+                self.all_data.obsm[k] = loaded
+
+                for (expt, gene), expt_v in self.expt_data.items():
+                    expt_idx = self.all_data.obs['Experiment'] == expt
+                    expt_idx &= self.all_data.obs['Gene'] == gene
+                    expt_v.obsm[k] = self.all_data.obsm[k].loc[expt_idx, :]
+                
     
     @staticmethod
     def _first_load(adata):
@@ -197,9 +219,6 @@ def _call_cc(data):
         data.obs["CC"] = data.obs["CC"].astype(cat_type)
         
     return data
-
-def _run_dewakss
-
 
 def calc_group_props(data, cols=AGG_COLS):
     

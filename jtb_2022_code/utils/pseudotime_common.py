@@ -14,7 +14,10 @@ from .adata_common import *
 from .projection_common import *
 
 
-def do_pca_pt(data, key="pca_pt"):
+PCA_PT = "pca_pt"
+
+
+def do_pca_pt(data, key=PCA_PT):
     # PCA-based pseudotime
     if 'X_pca' not in data.obsm:
         _sc.pp.pca(data, n_comps=1)
@@ -58,4 +61,27 @@ def spearman_rho_pools(pool_vector, pt_vector, average_1_2_pools=True):
         pool_vector[pool_vector == 2] = 1
     
     return _spearmanr(pool_vector, pt_vector)[0]
+   
     
+def spearman_rho_grid(data, obsm_key, uns_key, average_1_2_pools=True):
+    
+    def _calc_rhos(adata):
+        n = adata.obsm[obsm_key].shape[1]
+        p = adata.obs["Pool"]
+        return list(map(lambda y: (adata.obsm[obsm_key].columns[y],
+                                   spearman_rho_pools(p, adata.obsm[obsm_key].iloc[:, y])), 
+                        range(n)))
+    
+    df = data.apply_to_expts(_calc_rhos)
+    df = _pd.DataFrame(df)
+    df.columns = df.iloc[0, :].apply(lambda x: x[0])
+    df.columns = _pd.MultiIndex.from_tuples(list(map(lambda x: x.split("_"), df.columns)))
+    df.columns.set_names(['PCs', 'Neighbors'], inplace=True)
+    df.index = _pd.MultiIndex.from_tuples(data.expts)
+    df = df.applymap(lambda x: x[1])
+    data.all_data.uns[uns_key] = df
+    
+    for k in data.expts:
+        data.expt_data[k].uns[uns_key] = df.loc[k, :].copy()
+    
+    return data

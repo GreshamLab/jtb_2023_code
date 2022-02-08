@@ -1,10 +1,11 @@
 import scanpy as _sc
 import numpy as _np
 import dewakss.denoise as _dd
+from joblib import parallel_backend as _parallel_backend
 
 from ..figure_constants import *
 
-def run_dewakss(data, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS)
+def run_dewakss(data, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS):
 
     print("\tNormalizing Data")
     data.X = data.X.astype(float)
@@ -15,7 +16,7 @@ def run_dewakss(data, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS)
         pass
     else:
         print("\tPreprocessing (PCA)")
-        _sc.pp.pca(data, n_comps=max(N_PCS))
+        _sc.pp.pca(data, n_comps=max(n_pcs))
         
     print("\tDEWAKSS:")
     with _parallel_backend("loky", inner_max_num_threads=1):

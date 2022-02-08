@@ -15,12 +15,17 @@ RAPA_SINGLE_CELL_EXPR_PROCESSED = "/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_FIGS.
 # For formatting (needs {e} and {g})
 RAPA_SINGLE_CELL_EXPR_BY_EXPT = "/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_FIGS_{e}_{g}.h5ad"
 
+# Pseudotime TSV files keyed by (method, is_dewakss), value (file name, has_index)
+PSEUDOTIME_FILES = {('dpt', False): ("./Data/2021_RAPA_TIMECOURSE_DPT.tsv.gz", True),
+                    ('cellrank', False): ("./Data/2021_RAPA_TIMECOURSE_CELLRANK.tsv.gz", True),
+                    ('monocle', False): ("./Data/2021_RAPA_TIMECOURSE_MONOCLE.tsv.gz", False)}
+
 # Gene metadata filenames
 GENE_GROUP_FILE = "./Data/STable6.tsv"
 GENE_NAMES_FILE = "./Data/yeast_gene_names.tsv"
 
 # Group columns
-CC_COLS = ['M-G1', 'G1', 'G2', 'S', 'M']
+CC_COLS = ['M-G1', 'G1', 'S', 'G2', 'M']
 AGG_COLS = ['RP', 'RiBi', 'iESR', 'Mito']
 OTHER_GROUP_COL = 'Other'
 CELLCYCLE_GROUP_COL = 'Cell Cycle'
@@ -47,6 +52,7 @@ FIGURE_1_1_SUPPLEMENTAL_FILE_NAME = "./Figures/Supplemental_Figure_1_1"
 FIGURE_1_2_SUPPLEMENTAL_FILE_NAME = "./Figures/Supplemental_Figure_1_2"
 FIGURE_2_FILE_NAME = "./Figures/Figure_2"
 FIGURE_2_1_SUPPLEMENTAL_FILE_NAME = "./Figures/Supplemental_Figure_2_1"
+FIGURE_2_2_SUPPLEMENTAL_FILE_NAME = "./Figures/Supplemental_Figure_2_1"
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)
