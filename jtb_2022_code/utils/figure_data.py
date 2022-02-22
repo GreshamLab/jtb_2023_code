@@ -2,6 +2,7 @@ import numpy as _np
 import pandas as _pd
 import pandas.api.types as _pat
 import os as _os
+import gc as _gc
 import anndata as _ad
 import scanpy as _sc
 import scipy as _sp
@@ -14,14 +15,18 @@ class FigureSingleCellData:
     _all_data = None
     _expt_data = None
     _expt_keys = None
-    
+       
     expt_cats = [1, 2]
-    gene_cats = ["WT", "fpr1"]       
+    gene_cats = ["WT", "fpr1"]   
         
     @property
     def expt_files(self):
         return {(e, g): RAPA_SINGLE_CELL_EXPR_BY_EXPT.format(e=e, g=g) 
                 for e in self.expt_cats for g in self.gene_cats}
+    
+    @property
+    def all_data_file(self):
+        return RAPA_SINGLE_CELL_EXPR_PROCESSED
     
     @property
     def all_data(self):        
@@ -33,7 +38,7 @@ class FigureSingleCellData:
     
     @property
     def expts(self):
-        return self._expt_keys
+        return self._expt_keys            
     
     @property
     def has_pca(self):
@@ -48,9 +53,33 @@ class FigureSingleCellData:
     @property
     def _all_adatas(self):
         return [self.all_data] + [v for k, v in self.expt_data.items()]
-    
-    def __init__(self):
-        self._load()
+       
+    def __init__(self, start_from_scratch=False, memory_efficient=True):
+        self._load(from_unprocessed=start_from_scratch)
+        
+    def to_memory(self, key):
+        if key == 'all' and self.all_data is None:
+            self._all_data = _ad.read(self.all_data_filename)
+            return self.all_data
+        elif key == 'all':
+            return self.all_data
+        elif self.expt_data[key] is None:
+            self._expt_data[key] = _ad.read(self.all_data_filename)
+            return self._expt_data[key]
+        else:    
+            return self.expt_data[key]
+        
+    def to_disk(self, key):
+        
+        if key == 'all' and self.all_data is not None:
+            self.all_data.write(self.all_data_file)
+            self._all_data = None
+            
+        elif self.expt_data[key] is not none:
+            self.expt_data[key].write(self.expt_files[key])
+            self._expt_data[key] = None
+            
+        _gc.collect(2)
     
     def do_projections(self):
         if not self.has_pca:
@@ -80,8 +109,8 @@ class FigureSingleCellData:
             print(f"Applying {func.__name__} to data [{_data_descript}] {data.shape}")
         return func(data, *args, **kwargs)
     
-    def _load(self):
-        _first_load = not _os.path.exists(RAPA_SINGLE_CELL_EXPR_PROCESSED)
+    def _load(self, from_unprocessed=False):
+        _first_load = from_unprocessed or not _os.path.exists(RAPA_SINGLE_CELL_EXPR_PROCESSED)
         fn = RAPA_SINGLE_CELL_EXPR_PROCESSED if not _first_load else RAPA_SINGLE_CELL_EXPR_FILE
         
         if VERBOSE:
@@ -98,30 +127,26 @@ class FigureSingleCellData:
             self.save()
             
     
-    def _load_expts(self):
+    def _load_expts(self, force_extraction_from_all=False):
         
         if self.expt_data is not None:
             return
         
-        _expt_data = {}
-        _expt_keys = []
+        self._expt_keys = [k for k in self.expt_files]
+        self._expt_data = {k: None for k in self._expt_keys}
         
         for k, v in self.expt_files.items():
-            _expt_keys.append(k)
-            if _os.path.exists(v):
+            if _os.path.exists(v) and not force_extraction_from_all:
                 if VERBOSE:
                     print(f"Reading Single Cell Experiment Data from {v}")
-                _expt_data[k] = _ad.read(v)
+                self._expt_data[k] = _ad.read(v)
             else:
                 e, g = k
                 if VERBOSE:
                     print(f"Extracting [{k}] Single Cell Data from all data")
-                _expt_data[k] = self.all_data[(self.all_data.obs["Experiment"] == e) &
-                                              (self.all_data.obs["Gene"] == g), :].copy()
-        
-        self._expt_data = _expt_data
-        self._expt_keys = _expt_keys
-        
+                self._expt_data[k] = self.all_data[(self.all_data.obs["Experiment"] == e) &
+                                                   (self.all_data.obs["Gene"] == g), :].copy()
+                
     
     def save(self):
         
@@ -134,9 +159,10 @@ class FigureSingleCellData:
         # Save individual experiments
         if self.expt_data is not None:
             for k, v in self.expt_files.items():
-                if VERBOSE:
-                    print(f"Writing Single Cell Data to {v}")
-                self.expt_data[k].write(v)
+                if self.expt_data[k] is not None:
+                    if VERBOSE:
+                        print(f"Writing Single Cell Data to {v}")
+                    self.expt_data[k].write(v)
             
     
     def load_pseudotime(self, files=PSEUDOTIME_FILES):

@@ -6,32 +6,31 @@ import anndata as _ad
 from scipy.stats import spearmanr as _spearmanr
 
 from joblib import parallel_backend as _parallel_backend
-from jtb_2022_code.utils.pseudotime_common import *
-from jtb_2022_code.utils.dewakss_common import run_dewakss
+from ..utils.pseudotime_common import *
+from ..utils.adata_common import get_clean_anndata
+from ..utils.dewakss_common import run_dewakss
+from .pseudotime_scanpy_dpt import do_dpt, DPT_OBS_COL
 
-DPT_OBS_COL = 'dpt_pseudotime'
+DPT_DEWAKSS_OBS_COL = "denoised_" + DPT_OBS_COL
 
 
-def _do_dpt_dewakss(data, n_dcs=15):
+def do_dpt_denoised(adata, n_comps=15):
     
-    run_dewakss(data)
+    if DPT_DEWAKSS_OBS_COL in adata.obs:
+        return adata
+    
+    ddata = get_clean_anndata(adata, layer='denoised', include_pca=True, replace_neighbors_with_dewakss=True)
+    
+    if 'X_pca' not in ddata.obsm:
+        _sc.pp.pca(ddata, n_comps=adata.uns['denoised']['params']['n_pcs'])
         
-    do_pca_pt(data)
-
-    # Set the dewakss graphs & denoised expression data on default keys
-    data.obsp['distances'] = data.obsp['denoised_distances'].copy()
-    data.obsp['connectivities'] = data.obsp['denoised_connectivities'].copy()
-    data.X = data.layers['denoised'].copy()
+    do_dpt(ddata, n_dcs=n_comps)
     
-    # Get a root cell
-    data.uns['iroot'] = data.obs[PCA_PT].argmin()
-    print(f"\tSelected root cell: {data.uns['iroot']}")
-
-    with _parallel_backend("loky", inner_max_num_threads=1):
-        _sc.tl.diffmap(data, n_comps=n_dcs)
-        _sc.tl.dpt(data, n_dcs=n_dcs)
-
+    adata.obs[DPT_DEWAKSS_OBS_COL] = ddata.obs[DPT_OBS_COL]
     
+    return adata
+
+   
 def _dpt_by_group(adata, n_comps=15, layer="counts"):
     
     pt = _np.zeros(adata.shape[0])
@@ -43,19 +42,20 @@ def _dpt_by_group(adata, n_comps=15, layer="counts"):
             s_idx &= adata.obs['Gene'] == g
 
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
-            _do_dpt_dewakss(sdata, n_dcs=n_comps)
+            run_dewakss(sdata)
+            do_dpt_denoised(sdata, n_comps=n_comps)
             
-            pt[s_idx] = sdata.obs[DPT_OBS_COL]
+            pt[s_idx] = sdata.obs[DPT_DEWAKSS_OBS_COL]
             
             rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[DPT_OBS_COL])
-            print(f"Scanpy DPT PT & Pool rho = {rho}")
+            print(f"Experiment {i} [{g}] Scanpy DPT rho = {rho}")
             
     return pt
 
 
 def dpt_dewakss(adata, layer="counts"):
-        
+    
     do_pca_on_groups(adata, _np.max(N_PCS), layer=layer)
-    adata.obs[DPT_OBS_COL] = _dpt_by_group(adata, layer=layer)
+    adata.obs[DPT_DEWAKSS_OBS_COL] = _dpt_by_group(adata, layer=layer)
 
     return adata

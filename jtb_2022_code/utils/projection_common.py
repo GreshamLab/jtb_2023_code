@@ -12,7 +12,7 @@ from .figure_common import *
 from ..figure_constants import *
 
 
-def do_pca(adata, n_pcs):
+def do_pca(adata, n_pcs, normalize=True):
     # If there is no projection in the data object, make it
     if 'X_pca' not in adata.obsm:
         if VERBOSE:
@@ -23,8 +23,10 @@ def do_pca(adata, n_pcs):
         
         # Normalize and log1p
         adata.X = adata.X.astype(float)
-        _sc.pp.normalize_per_cell(adata)
-        _sc.pp.log1p(adata)
+        
+        if normalize:
+            _sc.pp.normalize_per_cell(adata)
+            _sc.pp.log1p(adata)
 
         # Do PCA, kNN, and UMAP with constant parameters
         _sc.pp.pca(adata, n_comps=n_pcs)
@@ -50,3 +52,17 @@ def do_umap(adata, n_pcs, nns, min_dist=0.1):
         _sc.tl.umap(adata, min_dist=min_dist)
         
     return adata
+
+def do_denoised_pca(adata, n_pcs=max(N_PCS)):
+    
+    if 'denoised_pca' in adata.obsm:
+        return adata
+    
+    dn_data = get_clean_anndata(adata, layer='denoised')
+    do_pca(dn_data, n_pcs, normalize=False)
+    
+    adata.obsm['denoised_pca'] = dn_data.obsm['X_pca'].copy()
+    adata.uns['denoised_pca'] = dn_data.uns['pca'].copy()
+    
+    return adata
+    

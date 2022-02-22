@@ -19,16 +19,6 @@ PALANTIR_OBSM_COL = 'palantir_pt'
 
 
 def _do_palantir(data, npcs, ncomps=15, nns=30):
-    print("\tNormalizing Data")
-    data.X = data.X.astype(float)
-    _sc.pp.normalize_per_cell(data)
-    _sc.pp.log1p(data)
-   
-    if "X_pca" in data.obsm and data.obsm["X_pca"].shape[1] >= npcs:
-        pass
-    else:
-        print("\tPreprocessing (PCA)")
-        _sc.pp.pca(data, n_comps=npcs)
 
     # Diffusion map on PCs
     with _parallel_backend("loky", inner_max_num_threads=1):
@@ -51,6 +41,19 @@ def _do_palantir(data, npcs, ncomps=15, nns=30):
 
     return data
 
+
+def _do_palantir_preprocessing(data, npcs):
+    print("\tNormalizing Data")
+    data.X = data.X.astype(float)
+    _sc.pp.normalize_per_cell(data)
+    _sc.pp.log1p(data)
+   
+    if "X_pca" in data.obsm and data.obsm["X_pca"].shape[1] >= npcs:
+        pass
+    else:
+        print("\tPreprocessing (PCA)")
+        _sc.pp.pca(data, n_comps=npcs)    
+
     
 def _palantir_by_group(adata, layer="counts", npc=50, n_comps=15, nns=30):
     
@@ -63,6 +66,7 @@ def _palantir_by_group(adata, layer="counts", npc=50, n_comps=15, nns=30):
             s_idx &= adata.obs['Gene'] == g
 
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
+            _do_palantir_preprocessing(sdata, npc)
             _do_palantir(sdata, npc, n_comps, nns)
             
             pt[s_idx] = sdata.obs[PALANTIR_OBSM_COL]

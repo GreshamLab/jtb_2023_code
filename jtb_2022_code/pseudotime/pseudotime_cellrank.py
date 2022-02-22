@@ -16,7 +16,13 @@ OBSM_COLUMNS = _pd.Index([str(x) + "_" + str(y) for x in N_PCS for y in N_NEIGHB
 CELLRANK_OBSM_COL = 'cellrank_pt'
 
 
-def _do_cellrank(data, npcs, nns):
+def do_cellrank(data, layer="Ms"):
+    ctk = CytoTRACEKernel(data, layer=layer)
+    ctk.compute_transition_matrix(threshold_scheme="soft", nu=0.5)
+    ctk.compute_projection(basis="umap")    
+
+
+def _do_cellrank_preprocess(data, npcs, nns):
     
     print("\tNormalizing Data")
     data.X = data.X.astype(float)
@@ -43,9 +49,7 @@ def _do_cellrank(data, npcs, nns):
 
     # CytoTRACE
     print("\tCytotrace")
-    ctk = CytoTRACEKernel(data)
-    ctk.compute_transition_matrix(threshold_scheme="soft", nu=0.5)
-    ctk.compute_projection(basis="umap")
+    do_cellrank(data)
 
     
 def _cellrank_by_group(adata, npc=50, nns=15, layer="counts"):
@@ -59,12 +63,13 @@ def _cellrank_by_group(adata, npc=50, nns=15, layer="counts"):
             s_idx &= adata.obs['Gene'] == g
 
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
-            _do_cellrank(sdata, npc, nns)
+            _do_cellrank_preprocess(sdata, npc, nns)
+            do_cellrank(sdata)
             
             pt[s_idx] = sdata.obs['ct_pseudotime']
             
             rho = _spearmanr(sdata.obs['Pool'], sdata.obs['ct_pseudotime'])[0]
-            print(f"Cellrank PT & Pool rho = {rho}")
+            print(f"Experiment {i} [{g}] Cellrank rho = {rho}")
             
     return pt
 

@@ -7,13 +7,28 @@ from scipy.stats import spearmanr as _spearmanr
 
 from joblib import parallel_backend as _parallel_backend
 from jtb_2022_code.utils.pseudotime_common import *
-
+from jtb_2022_code.figure_constants import *
+ 
 
 OBSM_COLUMNS = _pd.Index([str(x) + "_" + str(y) for x in N_PCS for y in N_NEIGHBORS])
 DPT_OBS_COL = 'dpt_pseudotime'
 
 
-def _do_dpt(data, npcs, nns, n_dcs=15):
+def do_dpt(data, n_dcs=15):
+    
+    # Get a root cell
+    do_pca_pt(data)
+    data.uns['iroot'] = data.obs[PCA_PT].argmin()
+    
+    if VERBOSE:
+        print(f"\tSelected root cell: {data.uns['iroot']}")
+
+    with _parallel_backend("loky", inner_max_num_threads=1):
+        _sc.tl.diffmap(data, n_comps=n_dcs)
+        _sc.tl.dpt(data, n_dcs=n_dcs)
+        
+
+def _do_dpt_preprocess(data, npcs, nns):
     
     data.X = data.X.astype(float)
     _sc.pp.normalize_per_cell(data)
@@ -24,17 +39,10 @@ def _do_dpt(data, npcs, nns, n_dcs=15):
     else:
         print("\tPreprocessing PCA")
         _sc.pp.pca(data, n_comps=npcs)
-        
-    do_pca_pt(data)
-    # Get a root cell
-    data.uns['iroot'] = data.obs[PCA_PT].argmin()
-    print(f"\tSelected root cell: {data.uns['iroot']}")
-
+           
     with _parallel_backend("loky", inner_max_num_threads=1):
         _sc.pp.neighbors(data, n_neighbors=nns, n_pcs=npcs)
-        _sc.tl.diffmap(data, n_comps=n_dcs)
-        _sc.tl.dpt(data, n_dcs=n_dcs)
-
+        
     
 def _dpt_by_group(adata, npc=50, nns=15, n_comps=15, layer="counts"):
     
@@ -47,12 +55,13 @@ def _dpt_by_group(adata, npc=50, nns=15, n_comps=15, layer="counts"):
             s_idx &= adata.obs['Gene'] == g
 
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
-            _do_dpt(sdata, npc, nns, n_dcs=n_comps)
+            _do_dpt_preprocess(sdata, npc, nns)
+            do_dpt(sdata, n_dcs=n_comps)
             
             pt[s_idx] = sdata.obs[DPT_OBS_COL]
             
             rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[DPT_OBS_COL])
-            print(f"Scanpy DPT PT & Pool rho = {rho}")
+            print(f"Experiment {i} [{g}] Scanpy DPT rho = {rho}")
             
     return pt
 

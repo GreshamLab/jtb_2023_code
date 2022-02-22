@@ -3,20 +3,31 @@ import numpy as _np
 import pandas as _pd
 import pandas.api.types as _pat
 
-def get_clean_anndata(full_adata, bool_idx, layer="X", include_pca=False):
+def get_clean_anndata(full_adata, bool_idx=None, layer="X", include_pca=False,
+                      include_umap=False, replace_neighbors_with_dewakss=False):
     
-    if layer == "X":
-        new_adata = _ad.AnnData(full_adata.X[bool_idx, :].copy())
+    dref = full_adata.X if layer == "X" else full_adata.layers[layer]
+    
+    if bool_idx is not None:
+        new_adata = _ad.AnnData(dref[bool_idx, :].copy())
+        new_adata.obs = full_adata.obs.loc[bool_idx, :].copy()
     else:
-        new_adata = _ad.AnnData(full_adata.layers[layer][bool_idx, :].copy())
+        new_adata = _ad.AnnData(dref.copy())
+        new_adata.obs = full_adata.obs.copy()
         
     new_adata.var = full_adata.var.copy()
-    new_adata.obs = full_adata.obs.loc[bool_idx, :].copy()
     
     pca_key = layer + "_pca"
     if include_pca and pca_key in full_adata.obsm:
-        new_adata.obsm[pca_key] = full_adata.obsm[pca_key][bool_idx, :].copy()
-   
+        pref = full_adata.obsm[pca_key]
+        new_adata.obsm['X_pca'] = pref[bool_idx, :].copy() if bool_idx is not None else pref.copy()
+        new_adata.uns['pca'] = full_adata.uns['pca'].copy()
+        
+    if replace_neighbors_with_dewakss:
+        new_adata.obsp['connectivities'] = full_adata.obsp['denoised_connectivities'].copy()
+        new_adata.obsp['distances'] = full_adata.obsp['distances'].copy()
+        new_adata.uns['neighbors'] = full_adata.uns['denoised'].copy()
+        
     return new_adata
 
 def transfer_obs(data, key, index, values):
