@@ -50,6 +50,7 @@ def do_pca_on_groups(data, npcs, layer="counts"):
             do_pca(sdata, npcs)
             
             data.obsm["X_pca"][s_idx, :] = sdata.obsm["X_pca"]
+            data.uns['pca'] = sdata.uns['pca'].copy()
     
     return data
 
@@ -68,18 +69,19 @@ def spearman_rho_pools(pool_vector, pt_vector, average_1_2_pools=True, ignore_na
 
     
     return _spearmanr(pool_vector, pt_vector)[0]
-   
+
+
+def calc_rhos(adata, obsm_key):
+    n = adata.obsm[obsm_key].shape[1]
+    p = adata.obs["Pool"]
+    return list(map(lambda y: (adata.obsm[obsm_key].columns[y],
+                               spearman_rho_pools(p, adata.obsm[obsm_key].iloc[:, y])), 
+                    range(n)))
+    
     
 def spearman_rho_grid(data, obsm_key, uns_key, average_1_2_pools=True):
-    
-    def _calc_rhos(adata):
-        n = adata.obsm[obsm_key].shape[1]
-        p = adata.obs["Pool"]
-        return list(map(lambda y: (adata.obsm[obsm_key].columns[y],
-                                   spearman_rho_pools(p, adata.obsm[obsm_key].iloc[:, y])), 
-                        range(n)))
-    
-    df = data.apply_to_expts(_calc_rhos)
+       
+    df = data.apply_to_expts(calc_rhos, obsm_key)
     df = _pd.DataFrame(df)
     df.columns = df.iloc[0, :].apply(lambda x: x[0])
     df.columns = _pd.MultiIndex.from_tuples(list(map(lambda x: x.split("_"), df.columns)))

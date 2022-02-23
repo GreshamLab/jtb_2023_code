@@ -9,6 +9,7 @@ import scipy as _sp
 
 from ..figure_constants import *
 from .projection_common import *
+from .pseudotime_common import spearman_rho_grid, calc_rhos
 
 class FigureSingleCellData:
     
@@ -166,7 +167,8 @@ class FigureSingleCellData:
             
     
     def load_pseudotime(self, files=PSEUDOTIME_FILES):
-        
+                
+        ### LOAD FLATFILES ###
         for k, (fn, has_idx) in files.items():
             if k not in self.all_data.obsm:
                 loaded = _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
@@ -177,7 +179,35 @@ class FigureSingleCellData:
                     expt_idx = self.all_data.obs['Experiment'] == expt
                     expt_idx &= self.all_data.obs['Gene'] == gene
                     expt_v.obsm[k] = self.all_data.obsm[k].loc[expt_idx, :]
+                    
+                if k[0] == 'palantir':
+                    self.apply_inplace_to_everything(_fix_palantir, ('palantir', False))
+                    
+        if 'rho' not in self.all_data.uns:
+                self.all_data.uns['rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
+                    
+        if 'denoised_rho' not in self.all_data.uns:
+                self.all_data.uns['denoised_rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
                 
+        ### CALCULATE SPEARMAN RHO FOR EACH EXPERIMENT ###
+        for k, _ in files.items():
+            rho_key = k[0] + '_rho'
+            
+            if rho_key not in self.all_data.uns and not k[1]:
+                spearman_rho_grid(self, k, rho_key)
+                rhomax = _np.abs(self.all_data.uns[rho_key]).apply(_np.nanmax, axis=1)
+                rhomax.columns = [k[0]]
+                self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], rhomax), axis=1)
+                
+            if k[0] not in self.all_data.uns['denoised_rho'].columns and k[1]:
+                df = _pd.DataFrame(self.apply_to_expts(calc_rhos, k))
+                df.columns = [k[0]]
+                df.index = _pd.MultiIndex.from_tuples(self.expts)
+                df = df.applymap(lambda x: x[1])
+                self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
+                
+        self.all_data.uns['denoised_rho'] = _np.abs(self.all_data.uns['denoised_rho']) 
+        
     
     @staticmethod
     def _first_load(adata):
@@ -300,3 +330,16 @@ def sum_for_pseudobulk(adata, by_cols):
     meta_bulk.reset_index(drop=True, inplace=True)
     
     return group_bulk, meta_bulk
+
+### SELECT 15 DCs FROM PALANTIR: ###
+def _dc_select(obsm_data, n_dcs=15):
+    col_split = list(map(lambda x: x.split("_"), obsm_data.columns))
+    keep_cols = [int(x[1]) == n_dcs for x in col_split]
+    obsm_data = obsm_data.loc[:, keep_cols].copy()
+    obsm_data.columns = [str(x[0]) + "_" + str(x[2]) 
+                         for x, y in zip(col_split, keep_cols) if y]
+    return obsm_data
+
+def _fix_palantir(adata, obsm_key):
+    nd = _dc_select(adata.obsm[obsm_key])
+    adata.obsm[(obsm_key[0], obsm_key[1])] = nd

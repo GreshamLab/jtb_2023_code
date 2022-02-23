@@ -24,7 +24,7 @@ def figure_2_supplement_1_plot(data, save=True):
                                   gridspec_kw=dict(width_ratios=[1, 1, 0.1, 1, 1, 0.1], 
                                                    height_ratios=[1, 1, 1, 1, 1, 1],
                                                    wspace=0, hspace=0.01), 
-                                  figsize=(6, 10), dpi=300,
+                                  figsize=(6, 9), dpi=300,
                                   constrained_layout=True)
 
     for i in range(1,3):
@@ -40,10 +40,10 @@ def figure_2_supplement_1_plot(data, save=True):
                 if ak == "_t":
                     axd[ax_key].set_ylabel("")
 
-    axd['pc12_1_cc'].set_title("Experiment 1")
-    axd['pc12_2_cc'].set_title("Experiment 2")
-    axd['pc12_1_t'].set_title("Experiment 1")
-    axd['pc12_2_t'].set_title("Experiment 2")
+    axd['pc12_1_cc'].set_title("Expt. 1")
+    axd['pc12_2_cc'].set_title("Expt. 2")
+    axd['pc12_1_t'].set_title("Expt. 1")
+    axd['pc12_2_t'].set_title("Expt. 2")
 
     axd['cc_cbar'].axis('off')
     fig_refs['cc_cbar'] = add_legend(axd['cc_cbar'], 
@@ -71,6 +71,11 @@ def figure_2_supplement_2_plot(data, save=True):
         dpt = dpt.reindex(N_NEIGHBORS.astype(str)[::-1], axis=0, level=2) 
         return dpt.loc[(expt, "WT"), :].applymap(np.abs)
 
+    panel_labels = {'dpt_rho_1': "A",
+                    'cellrank_rho_1': "B",
+                    'monocle_rho_1': "C",
+                    'palantir_rho_1': "D"}
+    
     panel_titles = {'dpt_rho_1': "Experiment 1",
                     'dpt_rho_2': "Experiment 2"}
 
@@ -85,7 +90,7 @@ def figure_2_supplement_2_plot(data, save=True):
                                   gridspec_kw=dict(width_ratios=[1, 1, 0.05], 
                                                    height_ratios=[1, 1, 1, 1],
                                                    wspace=0.1, hspace=0.1),
-                                  figsize=(6, 10), dpi=300)
+                                  figsize=(6, 9), dpi=300)
 
     for pt, pt_key in [('Diffusion PT (ρ)', 'dpt_rho'), 
                        ('Cellrank PT (ρ)', 'cellrank_rho'),
@@ -115,7 +120,10 @@ def figure_2_supplement_2_plot(data, save=True):
             # https://stackoverflow.com/questions/11917547/how-to-annotate-heatmap-with-text-in-matplotlib
             for y in range(hm_data.shape[0]):
                 for x in range(hm_data.shape[1]):
-                    axd[ax_key].text(x, y, '%.2f' % hm_data.iloc[y, x], 
+                    n = hm_data.iloc[y, x]
+                    if np.isnan(n):
+                        continue
+                    axd[ax_key].text(x, y, '%.2f' % n, 
                                      horizontalalignment='center', 
                                      verticalalignment='center',
                                      size=4
@@ -124,6 +132,8 @@ def figure_2_supplement_2_plot(data, save=True):
     for ax_key, title_str in panel_titles.items():
         axd[ax_key].set_title(title_str)
 
+    for ax_id, label in panel_labels.items():
+        axd[ax_id].set_title(label, loc='left', weight='bold', x=-0.3, y=0.99)
 
     fig.colorbar(fig_refs['dpt_rho_1'], cax=axd['cbar'], orientation="vertical",aspect=60)
     

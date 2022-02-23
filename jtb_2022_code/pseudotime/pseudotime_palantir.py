@@ -13,8 +13,8 @@ from ..utils.pseudotime_common import *
 # Reset random seed
 _np.random.seed(42)
 
-OBSM_COLUMNS = _pd.Index(["_".join((str(x), str(y), str(z))) 
-                          for x in N_PCS for y in N_COMPS for z in N_NEIGHBORS])
+OBSM_COLUMNS = _pd.Index(["_".join((str(x), str(z))) 
+                          for x in N_PCS for z in N_NEIGHBORS])
 PALANTIR_OBSM_COL = 'palantir_pt'
 
 
@@ -76,7 +76,7 @@ def _palantir_by_group(adata, layer="counts", npc=50, n_comps=15, nns=30):
             
     return pt
 
-def palantir_grid_search(adata, layer="counts", n_pcs=None, nc=15):
+def palantir_grid_search(adata, layer="counts", n_pcs=None, nc=15, dcs_equal_pcs=False):
     
     n_pcs = N_PCS if n_pcs is None else n_pcs
     
@@ -91,8 +91,9 @@ def palantir_grid_search(adata, layer="counts", n_pcs=None, nc=15):
     for npc in n_pcs:
         for nn in N_NEIGHBORS:
             print(f"Grid search: {npc} PCs, {nc} Comps, {nn} Neighbors")
-            obsm_column = "_".join((str(npc), str(nc), str(nn)))
-            palantir_pt = _palantir_by_group(adata, layer=layer, npc=npc, nns=nn)
+            obsm_column = "_".join((str(npc), str(nn)))
+            palantir_pt = _palantir_by_group(adata, layer=layer, npc=npc, nns=nn,
+                                             n_comps=npc if dcs_equal_pcs else nc)
             adata.obsm[PALANTIR_OBSM_COL].loc[:, obsm_column] = palantir_pt
 
     return adata

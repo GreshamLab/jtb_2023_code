@@ -24,7 +24,9 @@ RAPA_SINGLE_CELL_EXPR_BY_EXPT = str(DataFile("/scratch/cj59/RAPA/2021_RAPA_TIMEC
 PSEUDOTIME_FILES = {('dpt', False): (str(DataFile("2021_RAPA_TIMECOURSE_DPT.tsv.gz")), True),
                     ('cellrank', False): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK.tsv.gz")), True),
                     ('monocle', False): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE.tsv.gz")), False),
-                    ('palantir', False): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR.tsv.gz")), True)}
+                    ('palantir', False): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR.tsv.gz")), True),
+                    ('dpt', True): (str(DataFile("2021_RAPA_TIMECOURSE_DPT_DEWAKSS.tsv")), True),
+                    ('cellrank', True): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK_DEWAKSS.tsv")), True)}
 
 # Gene metadata filenames
 GENE_GROUP_FILE = str(DataFile("STable6.tsv"))

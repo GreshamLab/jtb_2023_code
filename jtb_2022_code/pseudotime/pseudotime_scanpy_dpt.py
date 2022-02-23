@@ -1,9 +1,6 @@
 import pandas as _pd
 import numpy as _np
-import scvelo as _scv
 import scanpy as _sc
-import anndata as _ad
-from scipy.stats import spearmanr as _spearmanr
 
 from joblib import parallel_backend as _parallel_backend
 from jtb_2022_code.utils.pseudotime_common import *
@@ -66,7 +63,7 @@ def _dpt_by_group(adata, npc=50, nns=15, n_comps=15, layer="counts"):
     return pt
 
 
-def dpt_grid_search(adata, layer="counts"):
+def dpt_grid_search(adata, layer="counts", nc=15, dcs_equal_pcs=False):
     
     if DPT_OBS_COL not in adata.obsm:
         adata.obsm[DPT_OBS_COL] = _pd.DataFrame(_np.zeros((adata.shape[0],
@@ -80,7 +77,8 @@ def dpt_grid_search(adata, layer="counts"):
         for nn in N_NEIGHBORS:
             print(f"Grid search: {npc} PCs, {nn} Neighbors")
             obsm_column = str(npc) + "_" + str(nn)
-            dpt_pt = _dpt_by_group(adata, layer=layer, npc=npc, nns=nn)
+            dpt_pt = _dpt_by_group(adata, layer=layer, npc=npc, nns=nn,
+                                   n_comps=npc if dcs_equal_pcs else nc)
             adata.obsm[DPT_OBS_COL].loc[:, obsm_column] = dpt_pt
 
     return adata
