@@ -79,7 +79,7 @@ def plot_figure_1(sc_data, save=True):
     fig_refs['umap_2'] = sc.pl.umap(sc_data.all_data, ax=axd['umap_2'], color="Experiment", palette=expt_palette(), show=False, alpha=0.25, size=2)
     
     for aid in ['umap_1', 'umap_2']:
-        axd[aid].annotate("n = " + f"{sc_data.all_data.shape[0]}", xy=(5, 0.2),  xycoords='data', xytext=(0.4, 0.05), textcoords='axes fraction')
+        axd[aid].annotate(f"n = {sc_data.all_data.shape[0]}", xy=(5, 0.2),  xycoords='data', xytext=(0.4, 0.05), textcoords='axes fraction')
 
     for ax_id, label in panel_labels.items():
         axd[ax_id].set_title(panel_titles[ax_id])

@@ -46,7 +46,7 @@ def _dpt_by_group(adata, n_comps=15, layer="counts", dcs_equal_pcs=False):
             
             pt[s_idx] = sdata.obs[DPT_DEWAKSS_OBS_COL]
             
-            rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[DPT_OBS_COL])
+            rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[DPT_DEWAKSS_OBS_COL])
             print(f"Experiment {i} [{g}] Scanpy DPT rho = {rho}")
             
     return pt

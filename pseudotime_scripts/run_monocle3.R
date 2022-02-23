@@ -64,7 +64,6 @@ assign.metadata.pt <- function(x, pt, pt.metadata) {
     metas <- unpack.int(x)
     print(paste0("Processing PT for ", toString(metas[[1]]), "_", toString(metas[[2]])))
 
-    
     pt.metadata[(meta_data$Gene == metas[[2]]) & (meta_data$Experiment == metas[[1]])] <- pt 
     return(pt.metadata)
 }

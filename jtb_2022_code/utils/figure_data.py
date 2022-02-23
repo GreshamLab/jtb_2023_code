@@ -9,7 +9,7 @@ import scipy as _sp
 
 from ..figure_constants import *
 from .projection_common import *
-from .pseudotime_common import spearman_rho_grid, calc_rhos
+from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools
 
 class FigureSingleCellData:
     
@@ -104,7 +104,7 @@ class FigureSingleCellData:
     
     @staticmethod
     def _apply(data, func, *args, **kwargs):
-        if VERBOSE:
+        if VERBOSE > 1:
             _data_descript = str(data.obs["Experiment"].unique().astype(str)) + ", "
             _data_descript += str(data.obs["Gene"].unique().astype(str))
             print(f"Applying {func.__name__} to data [{_data_descript}] {data.shape}")
@@ -182,20 +182,37 @@ class FigureSingleCellData:
                     
                 if k[0] == 'palantir':
                     self.apply_inplace_to_everything(_fix_palantir, ('palantir', False))
+
+                        
+        def _get_rho(adata, key):
+            return spearman_rho_pools(adata.obs['Pool'], adata.obs[key])
                     
         if 'rho' not in self.all_data.uns:
-                self.all_data.uns['rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
+            self.all_data.uns['rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
+            
+        if 'pca_pt' in self.expt_data[(1, "WT")].obs:
+            df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'pca_pt'), 
+                               index=_pd.MultiIndex.from_tuples(self.expts),
+                               columns = ['pca'])
+            self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], df), axis=1)
+
                     
         if 'denoised_rho' not in self.all_data.uns:
-                self.all_data.uns['denoised_rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
-                
+            self.all_data.uns['denoised_rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
+            
+        if 'denoised_pca_pt' in self.expt_data[(1, "WT")].obs:
+            df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'denoised_pca_pt'), 
+                               index=_pd.MultiIndex.from_tuples(self.expts),
+                               columns = ['pca'])
+            self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
+            
         ### CALCULATE SPEARMAN RHO FOR EACH EXPERIMENT ###
         for k, _ in files.items():
             rho_key = k[0] + '_rho'
             
             if rho_key not in self.all_data.uns and not k[1]:
                 spearman_rho_grid(self, k, rho_key)
-                rhomax = _np.abs(self.all_data.uns[rho_key]).apply(_np.nanmax, axis=1)
+                rhomax = _pd.DataFrame(_np.abs(self.all_data.uns[rho_key]).apply(_np.nanmax, axis=1))
                 rhomax.columns = [k[0]]
                 self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], rhomax), axis=1)
                 

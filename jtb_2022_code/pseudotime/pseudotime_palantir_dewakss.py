@@ -59,7 +59,7 @@ def _palantir_by_group(adata, n_comps=15, layer="counts", dcs_equal_pcs=True):
 
 def palantir_dewakss(adata, layer="counts", dcs_equal_pcs=True):
     
-    do_pca_on_groups(adata, _np.max(N_PCS), layer=layer, dcs_equal_pcs=dcs_equal_pcs)
-    adata.obs[PALANTIR_DEWAKSS_OBSM_COL] = _palantir_by_group(adata, layer=layer)
+    do_pca_on_groups(adata, _np.max(N_PCS), layer=layer)
+    adata.obs[PALANTIR_DEWAKSS_OBSM_COL] = _palantir_by_group(adata, layer=layer, dcs_equal_pcs=dcs_equal_pcs)
 
     return adata
