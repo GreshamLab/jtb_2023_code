@@ -43,8 +43,8 @@ def _palantir_by_group(adata, n_comps=15, layer="counts", dcs_equal_pcs=True):
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
             run_dewakss(sdata)
             
-            n_pcs = int(sdata.obs['PCs'].median())
-            n_neighbors = int(sdata.obs['neighbors'].median())
+            n_pcs = int(sdata.uns['denoised']['params']['n_pcs'])
+            n_neighbors = int(sdata.obs['denoised_n'].median())
             n_comps = n_pcs if dcs_equal_pcs else n_comps
             
             do_palantir_denoised(sdata, n_comps=n_comps)

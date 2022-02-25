@@ -59,6 +59,15 @@ do.monocle3 <- function(x) {
   return(cds)
 }
 
+# Put pseudotime into the appropriate rows
+assign.metadata.pt <- function(x, pt, pt.metadata) {
+    metas <- unpack.int(x)
+    print(paste0("Processing PT for ", toString(metas[[1]]), "_", toString(metas[[2]])))
+
+    pt.metadata[(meta_data$Gene == metas[[2]]) & (meta_data$Experiment == metas[[1]])] <- pt 
+    return(pt.metadata)
+}
+
 monocle3_pseudotime <- data.frame(matrix(0, ncol=1, nrow=nrow(count_data)),
                                   row.names = rownames(count_data))
 colnames(monocle3_pseudotime) <- c('dewakss')

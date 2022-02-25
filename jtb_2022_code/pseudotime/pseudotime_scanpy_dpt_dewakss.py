@@ -41,7 +41,7 @@ def _dpt_by_group(adata, n_comps=15, layer="counts", dcs_equal_pcs=False):
             sdata = get_clean_anndata(adata, s_idx, layer=layer, include_pca=True)
             run_dewakss(sdata)
             
-            n_comps = int(sdata.obs['PCs'].median()) if dcs_equal_pcs else n_comps
+            n_comps = int(sdata.uns['denoised']['params']['n_pcs']) if dcs_equal_pcs else n_comps
             do_dpt_denoised(sdata, n_comps=n_comps)
             
             pt[s_idx] = sdata.obs[DPT_DEWAKSS_OBS_COL]
