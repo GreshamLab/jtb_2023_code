@@ -77,7 +77,7 @@ expts <- lapply(1:4, do.monocle3)
 for (i in 1:4) {
   monocle3_pseudotime[, 'dewakss'] <- assign.metadata.pt(i, 
                                                          expts[[i]]@principal_graph_aux[["UMAP"]]$pseudotime,
-                                                         monocle3_pseudotime[, column.label])
+                                                         monocle3_pseudotime[, 'dewakss'])
 }
 
 write_tsv(x = monocle3_pseudotime, file = OUT.MONOCLE.FILE)

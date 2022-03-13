@@ -47,11 +47,11 @@ def _palantir_by_group(adata, n_comps=15, layer="counts", dcs_equal_pcs=True):
             n_neighbors = int(sdata.obs['denoised_n'].median())
             n_comps = n_pcs if dcs_equal_pcs else n_comps
             
-            do_palantir_denoised(sdata, n_comps=n_comps)
+            do_palantir_denoised(sdata, n_pcs, n_neighbors, n_comps=n_comps)
             
-            pt[s_idx] = sdata.obs[DPT_DEWAKSS_OBS_COL]
+            pt[s_idx] = sdata.obs[PALANTIR_DEWAKSS_OBSM_COL]
             
-            rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[DPT_OBS_COL])
+            rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[PALANTIR_OBSM_COL])
             print(f"Experiment {i} [{g}] Scanpy DPT rho = {rho}")
             
     return pt

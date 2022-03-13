@@ -12,7 +12,7 @@ setup(name=DISTNAME,
       author_email=MAINTAINER_EMAIL,
       license=LICENSE,
       packages=find_packages(include=['jtb_2022_code', "jtb_2022_code.*"]),
-      install_requires=['numpy', 'scipy', 'scanpy', 'pandas', 'joblib', 'anndata'],
+      install_requires=['numpy', 'scipy', 'scanpy', 'pandas', 'joblib', 'anndata', 'xlrd'],
       zip_safe=True,
       classifiers=[
             "Programming Language :: Python :: 3",

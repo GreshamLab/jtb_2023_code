@@ -10,6 +10,7 @@ import scipy as _sp
 from ..figure_constants import *
 from .projection_common import *
 from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools
+from .process_published_data import process_all_decay_links
 
 class FigureSingleCellData:
     
@@ -223,8 +224,13 @@ class FigureSingleCellData:
                 df = df.applymap(lambda x: x[1])
                 self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
                 
-        self.all_data.uns['denoised_rho'] = _np.abs(self.all_data.uns['denoised_rho']) 
+        self.all_data.uns['denoised_rho'] = _np.abs(self.all_data.uns['denoised_rho'])
         
+    def load_published_decay(self):
+        
+        if not all(x in self.all_data.var.columns for x in DECAY_CONSTANT_FILES.keys()):        
+            p_decay = process_all_decay_links(self.all_data.var_names)
+            self.all_data.var[p_decay.columns] = p_decay       
     
     @staticmethod
     def _first_load(adata):
