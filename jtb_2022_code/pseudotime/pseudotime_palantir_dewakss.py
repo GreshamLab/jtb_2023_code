@@ -16,7 +16,7 @@ PALANTIR_DEWAKSS_OBSM_COL = "denoised_" + PALANTIR_OBSM_COL
 
 def do_palantir_denoised(adata, n_pcs, nns, n_comps=15):
     
-    if DPT_DEWAKSS_OBS_COL in adata.obs:
+    if PALANTIR_DEWAKSS_OBSM_COL in adata.obs:
         return adata
     
     ddata = get_clean_anndata(adata, layer='denoised', include_pca=True, replace_neighbors_with_dewakss=True)
@@ -24,7 +24,7 @@ def do_palantir_denoised(adata, n_pcs, nns, n_comps=15):
     if 'X_pca' not in ddata.obsm:
         _sc.pp.pca(ddata, n_comps=n_pcs)
         
-    _do_palantir(ddata, n_pcs, n_dcs=n_comps, nns = nns)
+    _do_palantir(ddata, n_pcs, ncomps=n_comps, nns = nns)
     adata.obs[PALANTIR_DEWAKSS_OBSM_COL] = ddata.obs[PALANTIR_OBSM_COL]
     
     return adata
@@ -51,7 +51,7 @@ def _palantir_by_group(adata, n_comps=15, layer="counts", dcs_equal_pcs=True):
             
             pt[s_idx] = sdata.obs[PALANTIR_DEWAKSS_OBSM_COL]
             
-            rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[PALANTIR_OBSM_COL])
+            rho = spearman_rho_pools(sdata.obs['Pool'], sdata.obs[PALANTIR_DEWAKSS_OBSM_COL])
             print(f"Experiment {i} [{g}] Scanpy DPT rho = {rho}")
             
     return pt

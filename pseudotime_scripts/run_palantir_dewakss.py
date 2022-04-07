@@ -7,4 +7,4 @@ if __name__ == "__main__":
     adata = _ad.read(ADATA_FILE)
     adata = palantir_dewakss(adata, layer="X")
     #adata.write("/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.h5ad")
-    adata.obsm[PALANTIR_DEWAKSS_OBSM_COL].to_csv("/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.tsv.gz", sep="\t")
+    adata.obs[PALANTIR_DEWAKSS_OBSM_COL].to_csv("/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.tsv.gz", sep="\t")

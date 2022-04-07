@@ -171,17 +171,23 @@ def figure_1_supplement_1_plot(data, save=True):
     umap_adata.obs['Ribosomal'] = squeeze_data(umap_adata.obs['Ribosomal'], 0.6, 0)
     umap_adata.obs['iESR'] = squeeze_data(umap_adata.obs['iESR'], 0.1, 0)
 
-    fig_refs['umap_1'] = sc.pl.umap(umap_adata, ax=axd['umap_1'], color="Pool", palette=pool_palette(), show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
+    fig_refs['umap_1'] = sc.pl.umap(umap_adata, ax=axd['umap_1'], color="Pool", palette=pool_palette(), 
+                                    show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
     fig_refs['umap_1_legend'] = add_legend(add_legend_axis(axd['umap_1']), pool_palette(), umap_adata.obs['Pool'].dtype.categories.values)
-    fig_refs['umap_2'] = sc.pl.umap(umap_adata, ax=axd['umap_2'], color="CC", palette=cc_palette(), show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
+    fig_refs['umap_2'] = sc.pl.umap(umap_adata, ax=axd['umap_2'], color="CC", palette=cc_palette(), 
+                                    show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
     fig_refs['umap_2_legend'] = add_legend(add_legend_axis(axd['umap_2']), cc_palette(), umap_adata.obs['CC'].dtype.categories.values)
-    fig_refs['umap_3'] = sc.pl.umap(umap_adata, ax=axd['umap_3'], color="Gene", palette=strain_palette(), show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
+    fig_refs['umap_3'] = sc.pl.umap(umap_adata, ax=axd['umap_3'], color="Gene", palette=strain_palette(), 
+                                    show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
     fig_refs['umap_3_legend'] = add_legend(add_legend_axis(axd['umap_3']), strain_palette(), umap_adata.obs['Gene'].dtype.categories.values)
-    fig_refs['umap_4'] = sc.pl.umap(umap_adata, ax=axd['umap_4'], color="n_counts", show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
+    fig_refs['umap_4'] = sc.pl.umap(umap_adata, ax=axd['umap_4'], color="n_counts", 
+                                    show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
     #fig_refs['umap_4_cbar'] = plt.colorbar(fig_refs['umap_4'].collections[0], cax=add_legend_axis(axd['umap_4']), pad=0.01, fraction=0.08, aspect=30, use_gridspec=True)
-    fig_refs['umap_5'] = sc.pl.umap(umap_adata, ax=axd['umap_5'], color="Ribosomal", show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
+    fig_refs['umap_5'] = sc.pl.umap(umap_adata, ax=axd['umap_5'], color="Ribosomal", 
+                                    show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
     #fig_refs['umap_5_cbar'] = plt.colorbar(fig_refs['umap_5'].collections[0], cax=add_legend_axis(axd['umap_5']), pad=0.01, fraction=0.08, aspect=30, use_gridspec=True)
-    fig_refs['umap_6'] = sc.pl.umap(umap_adata, ax=axd['umap_6'], color="iESR", show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
+    fig_refs['umap_6'] = sc.pl.umap(umap_adata, ax=axd['umap_6'], color="iESR", 
+                                    show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
     #fig_refs['umap_6_cbar'] = plt.colorbar(fig_refs['umap_6'].collections[0], cax=add_legend_axis(axd['umap_6']), pad=0.01, fraction=0.08, aspect=30, use_gridspec=True)
 
     for ax_id, label in supp_1_panel_labels.items():

@@ -9,7 +9,7 @@ import scipy as _sp
 
 from ..figure_constants import *
 from .projection_common import *
-from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools
+from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools, do_time_assign_by_pool
 from .process_published_data import process_all_decay_links
 
 class FigureSingleCellData:
@@ -123,7 +123,7 @@ class FigureSingleCellData:
         if _first_load:
             self._first_load(self._all_data)
             
-        self._load_expts()
+        self._load_expts(force_extraction_from_all=from_unprocessed)
         
         if _first_load:
             self.save()
@@ -167,70 +167,96 @@ class FigureSingleCellData:
                     self.expt_data[k].write(v)
             
     
-    def load_pseudotime(self, files=PSEUDOTIME_FILES):
+    def load_pseudotime(self, files=PSEUDOTIME_FILES, do_rho=True):
                 
         ### LOAD FLATFILES ###
         for k, (fn, has_idx) in files.items():
-            if k not in self.all_data.obsm:
+            pt_key = self._pseudotime_key(k[0], k[1])
+            if pt_key not in self.all_data.obsm or any(pt_key not in x.obsm for _, x in self.expt_data.items()):
                 loaded = _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
                 loaded.index = loaded.index.astype(str)
-                self.all_data.obsm[k] = loaded
+                self.all_data.obsm[pt_key] = loaded
 
                 for (expt, gene), expt_v in self.expt_data.items():
                     expt_idx = self.all_data.obs['Experiment'] == expt
                     expt_idx &= self.all_data.obs['Gene'] == gene
-                    expt_v.obsm[k] = self.all_data.obsm[k].loc[expt_idx, :]
+                    expt_v.obsm[pt_key] = self.all_data.obsm[pt_key].loc[expt_idx, :].copy()
                     
-                if k[0] == 'palantir':
-                    self.apply_inplace_to_everything(_fix_palantir, ('palantir', False))
+                if k[0] == 'palantir' and not k[1]:
+                    self.apply_inplace_to_everything(_fix_palantir, pt_key)
 
-                        
+        ### CALCULATE CORRELATIONS AGAINST THE TIME DATA ###
         def _get_rho(adata, key):
             return spearman_rho_pools(adata.obs['Pool'], adata.obs[key])
+        
+        if do_rho:
                     
-        if 'rho' not in self.all_data.uns:
-            self.all_data.uns['rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
-            
-        if 'pca_pt' in self.expt_data[(1, "WT")].obs:
-            df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'pca_pt'), 
-                               index=_pd.MultiIndex.from_tuples(self.expts),
-                               columns = ['pca'])
-            self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], df), axis=1)
+            if 'rho' not in self.all_data.uns:
+                self.all_data.uns['rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
 
-                    
-        if 'denoised_rho' not in self.all_data.uns:
-            self.all_data.uns['denoised_rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
-            
-        if 'denoised_pca_pt' in self.expt_data[(1, "WT")].obs:
-            df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'denoised_pca_pt'), 
-                               index=_pd.MultiIndex.from_tuples(self.expts),
-                               columns = ['pca'])
-            self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
-            
-        ### CALCULATE SPEARMAN RHO FOR EACH EXPERIMENT ###
-        for k, _ in files.items():
-            rho_key = k[0] + '_rho'
-            
-            if rho_key not in self.all_data.uns and not k[1]:
-                spearman_rho_grid(self, k, rho_key)
-                rhomax = _pd.DataFrame(_np.abs(self.all_data.uns[rho_key]).apply(_np.nanmax, axis=1))
-                rhomax.columns = [k[0]]
-                self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], rhomax), axis=1)
-                
-            if k[0] not in self.all_data.uns['denoised_rho'].columns and k[1]:
-                df = _pd.DataFrame(self.apply_to_expts(calc_rhos, k))
-                df.columns = [k[0]]
-                df.index = _pd.MultiIndex.from_tuples(self.expts)
-                df = df.applymap(lambda x: x[1])
+            if 'pca_pt' in self.expt_data[(1, "WT")].obs:
+                df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'pca_pt'), 
+                                   index=_pd.MultiIndex.from_tuples(self.expts),
+                                   columns = ['pca'])
+                self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], df), axis=1)
+
+
+            if 'denoised_rho' not in self.all_data.uns:
+                self.all_data.uns['denoised_rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
+
+            if 'denoised_pca_pt' in self.expt_data[(1, "WT")].obs:
+                df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'denoised_pca_pt'), 
+                                   index=_pd.MultiIndex.from_tuples(self.expts),
+                                   columns = ['pca'])
                 self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
-                
-        self.all_data.uns['denoised_rho'] = _np.abs(self.all_data.uns['denoised_rho'])
+
+            ### CALCULATE SPEARMAN RHO FOR EACH EXPERIMENT ###
+            for k, _ in files.items():
+                rho_key = k[0] + '_rho'
+                pt_key = self._pseudotime_key(k[0], k[1])
+
+                if rho_key not in self.all_data.uns and not k[1]:
+                    spearman_rho_grid(self, pt_key, rho_key)
+                    rhomax = _pd.DataFrame(_np.abs(self.all_data.uns[rho_key]).apply(_np.nanmax, axis=1))
+                    rhomax.columns = [k[0]]
+                    self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], rhomax), axis=1)
+
+                if k[0] not in self.all_data.uns['denoised_rho'].columns and k[1]:
+                    df = _pd.DataFrame(self.apply_to_expts(calc_rhos, pt_key))
+                    df.columns = [k[0]]
+                    df.index = _pd.MultiIndex.from_tuples(self.expts)
+                    df = df.applymap(lambda x: x[1])
+                    self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
+
+            self.all_data.uns['denoised_rho'] = _np.abs(self.all_data.uns['denoised_rho'])
+
+        ### CALCULATE TIME VALUES BASED ON PSEUDOTIME ###
+        
+        def _pt_to_obs(adata):
+            for m in ['dpt', 'cellrank', 'monocle', 'palantir']:
+                km = m + '_pt'
+                adata.obs[km] = adata.obsm[self._pseudotime_key(m, True)].copy()
+        
+        self.apply_inplace_to_expts(_pt_to_obs)
+        
+        for m in ['dpt', 'cellrank', 'monocle', 'palantir']:
+            self.apply_inplace_to_expts(do_time_assign_by_pool, pt_obs_key = m + "_pt")
+        
+    def get_pseudotime(method, denoised=False, expt=None):
+        if expt is None:
+            return self.all_data.obsm[self._pseudotime_key(method, denoised)]
+        else:
+            return self.expt_data[expt].obsm[self._pseudotime_key(method, denoised)]
         
     def load_published_decay(self):
         
         if not all(x in self.all_data.var.columns for x in DECAY_CONSTANT_FILES.keys()):        
             p_decay = process_all_decay_links(self.all_data.var_names)
-            self.all_data.var[p_decay.columns] = p_decay       
+            self.all_data.var[p_decay.columns] = p_decay     
+            
+    @staticmethod
+    def _pseudotime_key(method, denoised=False):
+        return str(method).lower() + "_" + str(denoised)
     
     @staticmethod
     def _first_load(adata):
@@ -253,6 +279,14 @@ class FigureSingleCellData:
         adata = _call_cc(adata)
         adata = calc_group_props(adata)
         adata = calc_other_cc_groups(adata)
+        
+    def gene_common_name(self, gene_symbol):
+        
+        if gene_symbol in self._all_data.var_names and "CommonName" in self._all_data.var.columns:
+            return self._all_data.var.loc[gene_symbol, "CommonName"]
+        
+        else:
+            return None
         
         
 def _gene_metadata(adata):
@@ -365,4 +399,4 @@ def _dc_select(obsm_data, n_dcs=15):
 
 def _fix_palantir(adata, obsm_key):
     nd = _dc_select(adata.obsm[obsm_key])
-    adata.obsm[(obsm_key[0], obsm_key[1])] = nd
+    adata.obsm[obsm_key] = nd

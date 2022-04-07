@@ -1,5 +1,6 @@
-from jtb_2022_code.utils.pseudotime_common import do_pca_pt, do_denoised_pca, calculate_times_velocities
+from jtb_2022_code.utils.pseudotime_common import do_pca_pt, do_denoised_pca, calculate_times_velocities, do_time_assign_by_pool
 from jtb_2022_code.utils.dewakss_common import run_dewakss
+from jtb_2022_code.utils.decay_common import calc_decays, calc_halflives
 from jtb_2022_code import FigureSingleCellData
 from jtb_2022_code.utils.figure_data import calc_other_cc_groups
 from jtb_2022_code.pseudotime.pseudotime_cellrank_dewakss import do_cytotrace_denoised
@@ -20,14 +21,14 @@ data.apply_inplace_to_expts(do_cytotrace_denoised)
 data.apply_inplace_to_expts(do_dpt_denoised)
 data.save()
 
+data.apply_inplace_to_expts(do_time_assign_by_pool, 'pca_pt')
 data.apply_inplace_to_expts(calculate_times_velocities, 
                             layer='denoised',
                             transform_expr=np.expm1,
-                            distance_key='denoised_distances',
-                            quantiles)
+                            distance_key='denoised_distances')
 data.save()
 
-#data.apply_inplace_to_expts(calc_decays)
-#data.apply_inplace_to_expts(calc_halflives)
+data.apply_inplace_to_expts(calc_decays)
+data.apply_inplace_to_expts(calc_halflives)
 #data.apply_inplace_to_expts(calc_decay_windows, 80)
-#data.save()
+data.save()

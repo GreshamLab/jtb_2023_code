@@ -27,7 +27,8 @@ PSEUDOTIME_FILES = {('dpt', False): (str(DataFile("2021_RAPA_TIMECOURSE_DPT.tsv.
                     ('palantir', False): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR.tsv.gz")), True),
                     ('dpt', True): (str(DataFile("2021_RAPA_TIMECOURSE_DPT_DEWAKSS.tsv")), True),
                     ('cellrank', True): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK_DEWAKSS.tsv")), True),
-                    ('monocle', True): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE_DEWAKSS.tsv.gz")), False)}
+                    ('monocle', True): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE_DEWAKSS.tsv.gz")), False),
+                    ('palantir', True): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.tsv.gz")), True)}
 
 # Existing decay constant data files
 # {DataSet: (File type, Gene Column, Half-life Column, Excel loading engine)}
@@ -59,8 +60,10 @@ UMAP_NPCS = 50
 UMAP_NNS = 200
 UMAP_MIN_DIST = 0.2
 
-# Input schematic FIG1B
+# Input schematic FIGS
 FIG1B_FILE_NAME = str(DataFile("Figure1B_RAW.png"))
+FIG2A_FILE_NAME = str(DataFile("Figure2A_RAW.png"))
+FIG3A_FILE_NAME = str(DataFile("Figure3A_RAW.png"))
 
 # Color Palettes for Categorical Data
 POOL_PALETTE = "YlGnBu"

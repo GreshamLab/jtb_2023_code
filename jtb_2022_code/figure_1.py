@@ -51,15 +51,21 @@ def plot_figure_1(sc_data, save=True):
     fig, axd = plt.subplot_mosaic([['hm', 'image', 'image'],
                                    ['hm', 'umap_1', 'umap_2']],
                                   gridspec_kw=dict(width_ratios=[0.75, 1, 1], 
-                                                   height_ratios=[1, 2]), 
-                                  figsize=(8, 4), dpi=300,
+                                                   height_ratios=[1, 1.25],
+                                                   hspace=0), 
+                                  figsize=(8, 4), dpi=300, 
                                   constrained_layout=True)
 
     ### PANEL A - IMSHOW HEATMAP ###
     fig_refs['hm_im'] = axd['hm'].imshow(squeeze_data(plot_genes, FIGURE_1A_MINMAX), 
                                          cmap='bwr', aspect='auto', interpolation='nearest')
+
     fig_refs['hm_divider'] = make_axes_locatable(axd['hm'])
+    fig_refs['hm_toppad'] = fig_refs['hm_divider'].append_axes('top', size='3%', pad=0.1)
     fig_refs['hm_cax'] = fig_refs['hm_divider'].append_axes('bottom', size='2.5%', pad=0.6)
+    fig_refs['hm_bottompad'] = fig_refs['hm_divider'].append_axes('bottom', size='6%', pad=0.1)
+    fig_refs['hm_toppad'].axis('off')
+    fig_refs['hm_bottompad'].axis('off')
 
     axd['hm'].set_xticks(np.arange(len(plot_x_labels)), labels=plot_x_labels, rotation=90, ha="center")
     axd['hm'].set_yticks([], labels=[])
@@ -73,19 +79,19 @@ def plot_figure_1(sc_data, save=True):
     ### PANEL B - IMSHOW SCHEMATIC ###
     axd['image'].imshow(plt.imread(FIG1B_FILE_NAME), aspect='equal')
     axd['image'].axis('off')
-    
+
     ### PANEL C - SCANPY UMAP ###
     fig_refs['umap_1'] = sc.pl.umap(sc_data.all_data, ax=axd['umap_1'], color="Pool", palette=pool_palette(), show=False, alpha=0.25, size=2)
-    fig_refs['umap_2'] = sc.pl.umap(sc_data.all_data, ax=axd['umap_2'], color="Experiment", palette=expt_palette(), show=False, alpha=0.25, size=2)
-    
+    fig_refs['umap_2'] = sc.pl.umap(sc_data.all_data, ax=axd['umap_2'], color="Experiment", palette=expt_palette(), show=False, alpha=0.25, size=2, legend_loc='none')
+    add_legend_in_plot(add_legend_axis(axd['umap_2']), expt_palette(), sc_data.all_data.obs['Experiment'].dtype.categories.values)
+
+
     for aid in ['umap_1', 'umap_2']:
-        axd[aid].annotate(f"n = {sc_data.all_data.shape[0]}", xy=(5, 0.2),  xycoords='data', xytext=(0.4, 0.05), textcoords='axes fraction')
+        axd[aid].annotate(f"n = {sc_data.all_data.shape[0]}", xy=(5, 0.2),  xycoords='data', xytext=(0.375, 0.05), textcoords='axes fraction')
 
     for ax_id, label in panel_labels.items():
         axd[ax_id].set_title(panel_titles[ax_id])
         axd[ax_id].set_title(label, loc='left', weight='bold')
-
-    #fig.tight_layout()    
 
     if save:
         fig.savefig(FIGURE_1_FILE_NAME + ".png", facecolor="white")

@@ -53,9 +53,9 @@ def do_umap(adata, n_pcs, nns, min_dist=0.1):
         
     return adata
 
-def do_denoised_pca(adata, n_pcs=max(N_PCS)):
+def do_denoised_pca(adata, n_pcs=max(N_PCS), force=False):
     
-    if 'denoised_pca' in adata.obsm:
+    if 'denoised_pca' in adata.obsm and not force:
         return adata
     
     dn_data = get_clean_anndata(adata, layer='denoised')
@@ -63,6 +63,7 @@ def do_denoised_pca(adata, n_pcs=max(N_PCS)):
     
     adata.obsm['denoised_pca'] = dn_data.obsm['X_pca'].copy()
     adata.uns['denoised_pca'] = dn_data.uns['pca'].copy()
+    adata.varm['denoised_PCs'] = dn_data.varm['PCs'].copy()
     
     return adata
     

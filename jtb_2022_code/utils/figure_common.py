@@ -40,10 +40,14 @@ def squeeze_data(data, high, low=None):
     data[data < low] = low
     return data
 
-def add_legend_axis(ax, size='8%', pad=0.05):
+def add_legend_axis(ax, size='8%', pad=0.05, add_extra_pad=None):
     divider = make_axes_locatable(ax)
     lax = divider.append_axes('right', size=size, pad=pad)
     lax.axis('off')
+    
+    if add_extra_pad is not None:
+        divider.append_axes('right', size=size, pad=pad)
+    
     return lax
 
 def add_legend(ax, colors, labels, title=None):
@@ -53,6 +57,16 @@ def add_legend(ax, colors, labels, title=None):
                      ncol=1,
                      borderpad=0.1, 
                      borderaxespad=0.1,
+                     columnspacing=0,
+                     mode=None,
+                     title=title)
+
+def add_legend_in_plot(ax, colors, labels, title=None, frameon=True):
+    fakeplots = [ax.scatter([], [], c=c, label=l) for c, l in zip(colors, labels)]
+    return ax.legend(frameon=frameon, 
+                     loc='center right',
+                     bbox_to_anchor=(0, 0.85),
+                     ncol=1,
                      columnspacing=0,
                      mode=None,
                      title=title)
