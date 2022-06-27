@@ -1,21 +1,22 @@
-from inferelator_prior.velocity import decay
+from inferelator_velocity import decay
 import numpy as np
 
-def calc_decays(adata, include_alpha=False, add_pseudocount=True, log_expression=False, decay_quantiles=(0.01, 0.05),
-                decay_key='decay', alpha_key='alpha', force=False):
+def calc_decays(adata, velocity_key, output_key='decay_windows', output_alpha_key='output_alpha',
+                include_alpha=False, decay_quantiles=(0.00, 0.05),
+                layer="X", force=False):
     
-    if decay_key in adata.var and not force:
+    if output_key in adata.var and not force:
         return adata
     
-    decays, decays_se, alphas = decay.calc_decay(np.expm1(adata.layers['denoised']), 
-                                                 adata.layers['denoised_velocity'], 
-                                                 include_alpha=include_alpha, 
-                                                 decay_quantiles=decay_quantiles, 
-                                                 add_pseudocount=add_pseudocount,
-                                                 log_expression=log_expression)
+    lref = adata.X if layer == "X" else adata.layers[layer]
+
+    decays, decays_se, alphas = _calc_decay(lref, 
+                                            adata.layers[velocity_key], 
+                                            include_alpha=include_alpha, 
+                                            decay_quantiles=decay_quantiles)
     
-    adata.var[decay_key] = decays
-    adata.var[decay_key + "_se"] = decays_se
+    adata.var[output_key] = decays
+    adata.var[output_key + "_se"] = decays_se
     
     if include_alpha:
         adata.var[alpha_key] = alphas
@@ -27,37 +28,52 @@ def calc_halflives(adata, decay_key='decay', halflife_key='halflife'):
     
     return adata
     
-def calc_decay_windows(adata, include_alpha=False, add_pseudocount=False, log_expression=False, decay_quantiles=(0.00, 0.05), 
-                       bootstrap=True, force=False):
+def calc_decay_windows(adata, velocity_key, time_key, output_key='decay_windows', output_alpha_key='output_alpha',
+                       include_alpha=False, decay_quantiles=(0.00, 0.05), 
+                       bootstrap=False, force=False, layer='X', t_min=0, t_max=80):
     
-    if 'decay_windows' in adata.varm and not force:
+    if output_key in adata.varm and not force:
         return adata
     
-    decays, decays_se, a, t_c = decay.calc_decay_sliding_windows(np.expm1(adata.layers['denoised']), 
-                                                                 adata.layers['denoised_velocity'], 
-                                                                 adata.obs['time_pca_pt'].values,
-                                                                 include_alpha=include_alpha, 
-                                                                 decay_quantiles=decay_quantiles, 
-                                                                 add_pseudocount=add_pseudocount, 
-                                                                 log_expression=log_expression, 
-                                                                 centers=np.linspace(0.5, 79.5, 80),
-                                                                 width=1.,
-                                                                 bootstrap_estimates=bootstrap)
+    lref = adata.X if layer == "X" else adata.layers[layer]
     
-    adata.uns['decay_windows'] = {'params': {'include_alpha': include_alpha, 
-                                             'add_pseudocount': add_pseudocount, 
-                                             'log_expression': log_expression, 
-                                             'decay_quantiles': list(decay_quantiles),
-                                             'bootstrap': bootstrap},
-                                  'times': t_c}
+    decays, decays_se, a, t_c = _calc_decay_windowed(lref, 
+                                                     adata.layers[velocity_key], 
+                                                     adata.obs[time_key].values,
+                                                     include_alpha=include_alpha, 
+                                                     decay_quantiles=decay_quantiles,
+                                                     t_min=t_min,
+                                                     t_max=t_max,
+                                                     bootstrap=bootstrap)
+    
+    adata.uns[output_key] = {'params': {'include_alpha': include_alpha, 
+                                        'decay_quantiles': list(decay_quantiles),
+                                        'bootstrap': bootstrap},
+                             'times': t_c}
 
-    adata.varm['decay_windows'] = np.array(decays).T
-    adata.varm['decay_windows_se'] = np.array(decays_se).T
+    adata.varm[output_key] = np.array(decays).T
+    adata.varm[output_key + "_se"] = np.array(decays_se).T
     
     if include_alpha:
-        adata.varm['output_alpha'] = np.array(a).T
+        adata.varm[output_alpha_key] = np.array(a).T
         
     return adata
+
+def _calc_decay(expr, velo, include_alpha=False, decay_quantiles=(0.0, 0.05)):
+    
+    return decay.calc_decay(expr, velo, include_alpha=include_alpha, decay_quantiles=decay_quantiles)
+
+def _calc_decay_windowed(expr, velo, times, include_alpha=False, decay_quantiles=(0.00, 0.05), 
+                         bootstrap=True, t_min=0, t_max=80):
+    
+    return decay.calc_decay_sliding_windows(expr, 
+                                            velo, 
+                                            times,
+                                            include_alpha=include_alpha, 
+                                            decay_quantiles=decay_quantiles,
+                                            centers=np.linspace(t_min + 0.5, t_max - 0.5, int(t_max - t_min)),
+                                            width=1.,
+                                            bootstrap_estimates=bootstrap)    
     
 def _halflife(decay_constants):
     

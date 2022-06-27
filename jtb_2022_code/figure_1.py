@@ -20,7 +20,7 @@ panel_labels = {'hm': "A",
 panel_titles = {'hm': "Rapamycin\nResponse",
                 'image': "",
                 'umap_1': "Time (Pool)",
-                'umap_2': "Replicate"}
+                'umap_2': "Expt. Replicate"}
 
 def plot_figure_1(sc_data, save=True):
     

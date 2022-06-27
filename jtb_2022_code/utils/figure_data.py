@@ -1,3 +1,6 @@
+import itertools
+import functools
+
 import numpy as _np
 import pandas as _pd
 import pandas.api.types as _pat
@@ -6,10 +9,14 @@ import gc as _gc
 import anndata as _ad
 import scanpy as _sc
 import scipy as _sp
+import inferelator_velocity as _ifv
 
 from ..figure_constants import *
 from .projection_common import *
-from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools, do_time_assign_by_pool
+from .dewakss_common import run_dewakss
+from .decay_common import calc_decays, calc_decay_windows, _calc_decay_windowed, _calc_decay
+from .velocity_common import calculate_velocities
+from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools
 from .process_published_data import process_all_decay_links
 
 class FigureSingleCellData:
@@ -58,31 +65,7 @@ class FigureSingleCellData:
        
     def __init__(self, start_from_scratch=False, memory_efficient=True):
         self._load(from_unprocessed=start_from_scratch)
-        
-    def to_memory(self, key):
-        if key == 'all' and self.all_data is None:
-            self._all_data = _ad.read(self.all_data_filename)
-            return self.all_data
-        elif key == 'all':
-            return self.all_data
-        elif self.expt_data[key] is None:
-            self._expt_data[key] = _ad.read(self.all_data_filename)
-            return self._expt_data[key]
-        else:    
-            return self.expt_data[key]
-        
-    def to_disk(self, key):
-        
-        if key == 'all' and self.all_data is not None:
-            self.all_data.write(self.all_data_file)
-            self._all_data = None
-            
-        elif self.expt_data[key] is not none:
-            self.expt_data[key].write(self.expt_files[key])
-            self._expt_data[key] = None
-            
-        _gc.collect(2)
-    
+           
     def do_projections(self):
         if not self.has_pca:
             self.apply_inplace_to_everything(do_pca, max(N_PCS))
@@ -126,6 +109,7 @@ class FigureSingleCellData:
         self._load_expts(force_extraction_from_all=from_unprocessed)
         
         if _first_load:
+            self.apply_inplace_to_everything(self._normalize)
             self.save()
             
     
@@ -142,12 +126,24 @@ class FigureSingleCellData:
                 if VERBOSE:
                     print(f"Reading Single Cell Experiment Data from {v}")
                 self._expt_data[k] = _ad.read(v)
+                
             else:
                 e, g = k
                 if VERBOSE:
                     print(f"Extracting [{k}] Single Cell Data from all data")
+                    
                 self._expt_data[k] = self.all_data[(self.all_data.obs["Experiment"] == e) &
                                                    (self.all_data.obs["Gene"] == g), :].copy()
+    
+    @staticmethod
+    def _normalize(adata):
+        
+        adata.layers['counts'] = adata.X.copy()
+        adata.X = adata.X.astype(float)
+        _sc.pp.normalize_per_cell(adata)
+        _sc.pp.log1p(adata)
+        
+        return adata
                 
     
     def save(self):
@@ -239,9 +235,6 @@ class FigureSingleCellData:
         
         self.apply_inplace_to_expts(_pt_to_obs)
         
-        for m in ['dpt', 'cellrank', 'monocle', 'palantir']:
-            self.apply_inplace_to_expts(do_time_assign_by_pool, pt_obs_key = m + "_pt")
-        
     def get_pseudotime(method, denoised=False, expt=None):
         if expt is None:
             return self.all_data.obsm[self._pseudotime_key(method, denoised)]
@@ -252,7 +245,145 @@ class FigureSingleCellData:
         
         if not all(x in self.all_data.var.columns for x in DECAY_CONSTANT_FILES.keys()):        
             p_decay = process_all_decay_links(self.all_data.var_names)
-            self.all_data.var[p_decay.columns] = p_decay     
+            self.all_data.var[p_decay.columns] = p_decay
+            
+    def velocity_data(self, expt, gene):
+        
+        _fn = RAPA_SINGLE_CELL_VELOCITY_BY_EXPT.format(e=expt, g=gene)
+        
+        if _os.path.exists(_fn):
+            print(f"Loading velocity data from {_fn}")
+            return _ad.read(_fn)
+        
+        else:
+            print(f"{_fn} not found. Generating velocity data:")
+            adata = self.denoised_data(expt, gene)
+            
+            adata.obs[RAPA_TIME_COL] = self.expt_data[(expt, gene)].obs[RAPA_TIME_COL]
+            adata.obs[CC_TIME_COL] = self.expt_data[(expt, gene)].obs[CC_TIME_COL]
+            
+            adata.obsp[RAPA_GRAPH_OBSP] = self.expt_data[(expt, gene)].obsp[RAPA_GRAPH_OBSP]
+            adata.obsp[CC_GRAPH_OBSP] = self.expt_data[(expt, gene)].obsp[CC_GRAPH_OBSP]
+            
+            calculate_velocities(adata)
+            adata.write(_fn)
+            
+            return adata
+        
+    def decay_data(self, expt, gene, recalculate=False):
+        
+        _velo_data = self.velocity_data(expt, gene)
+        
+        if 'cell_cycle_decay' not in _velo_data.var.columns or recalculate:
+            print("Calculating Biophysical Paramaters:")
+            
+            for g_key, time_key, tmin, tmax in [('cell_cycle', CC_TIME_COL, 0, 88), ('rapamycin', RAPA_TIME_COL, -10, 60)]:
+
+                calc_decays(
+                    _velo_data,
+                    g_key + "_velocity",
+                    output_key = g_key + "_decay",
+                    output_alpha_key = g_key + "_alpha",
+                    force=recalculate
+                )
+
+                calc_decay_windows(_velo_data,
+                    g_key + "_velocity",
+                    time_key,
+                    output_key = g_key + "_window_decay",
+                    output_alpha_key = g_key + "_window_alpha",
+                    include_alpha=True,
+                    t_min=tmin,
+                    t_max=tmax,
+                    force=recalculate
+                )
+
+            _fn = RAPA_SINGLE_CELL_VELOCITY_BY_EXPT.format(e=expt, g=gene)
+            
+            if VERBOSE:
+                print(f"Writing Single Cell Decay Data to {_fn}")
+                
+            _velo_data.write(_fn)
+            
+        return _velo_data
+    
+    def decay_data_all(self, recalculate=False):
+        
+        if recalculate or 'cell_cycle_decay' not in self.all_data.var.columns:
+        
+            adata_list = [self.decay_data(1, "WT"), self.decay_data(2, "WT")]
+
+            for g_key, time_key, tmin, tmax in [('cell_cycle', CC_TIME_COL, 0, 88), ('rapamycin', RAPA_TIME_COL, -10, 60)]:
+                expr = _np.vstack([a.X for a in adata_list])
+                velo = _np.vstack([a.layers[g_key + "_velocity"] for a in adata_list])
+                times = _np.hstack([a.obs[time_key].values for a in adata_list])
+                
+                decays, decays_se, a = _calc_decay(
+                    expr,
+                    velo,
+                    include_alpha=True
+                )
+                
+                self.all_data.var[g_key + "_decay"] = decays
+                self.all_data.var[g_key + "_decay_se"] = decays_se
+                self.all_data.var[g_key + "_alpha"] = a
+                
+                                
+                self.all_data.uns[g_key + "_decay"] = {'params': 
+                                                    {'include_alpha': True, 
+                                                     'decay_quantiles': [0.0, 0.05],
+                                                     'bootstrap': False}}
+                                
+                decays, decays_se, a, t_c = _calc_decay_windowed(
+                    expr,
+                    velo,
+                    times,
+                    t_min=tmin,
+                    t_max=tmax,
+                    include_alpha=True,
+                    bootstrap=False,
+                )
+                
+                self.all_data.uns[g_key + "_window_decay"] = {'params': 
+                                                    {'include_alpha': True, 
+                                                     'decay_quantiles': [0.0, 0.05],
+                                                     'bootstrap': False},
+                                                    'times': t_c}
+                
+                self.all_data.varm[g_key + "_window_decay"] = _np.array(decays).T
+                self.all_data.varm[g_key + "_window_decay_se"] = _np.array(decays_se).T
+                self.all_data.varm[g_key + "_window_alpha"] = _np.array(a).T
+                
+            
+            del adata_list
+            _gc.collect()
+                
+            if VERBOSE:
+                print(f"Writing Single Cell Data to {RAPA_SINGLE_CELL_EXPR_PROCESSED}")
+                    
+            self._all_data.write(RAPA_SINGLE_CELL_EXPR_PROCESSED)
+                
+        return self.all_data
+            
+    def denoised_data(self, expt, gene):
+        
+        _fn = RAPA_SINGLE_CELL_DENOISED_BY_EXPT.format(e=expt, g=gene)
+        
+        if _os.path.exists(_fn):
+            print(f"Loading denoised data from {_fn}")
+            return _ad.read(_fn)
+        
+        else:
+            print(f"{_fn} not found. Generating denoised data:")
+            adata = _ad.AnnData(self.expt_data[(expt, gene)].layers['counts'].copy(),
+                                obs=self.expt_data[(expt, gene)].obs.copy(),
+                                var=self.expt_data[(expt, gene)].var.copy(),
+                                dtype=int)
+            
+            run_dewakss(adata)
+            adata.write(_fn)
+            
+            return adata           
             
     @staticmethod
     def _pseudotime_key(method, denoised=False):
@@ -280,6 +411,8 @@ class FigureSingleCellData:
         adata = calc_group_props(adata)
         adata = calc_other_cc_groups(adata)
         
+        _add_broad_category(adata)
+        
     def gene_common_name(self, gene_symbol):
         
         if gene_symbol in self._all_data.var_names and "CommonName" in self._all_data.var.columns:
@@ -287,6 +420,58 @@ class FigureSingleCellData:
         
         else:
             return None
+        
+    def process_programs(self, recalculate=False):
+        
+        if recalculate or 'program' not in self.all_data.var:
+            _ifv.program_select(self.all_data, layer='counts', verbose=True)
+
+            if _np.sum(self.all_data.var['program'] == '0') > _np.sum(self.all_data.var['program'] == '1'):
+                _rapa_program, _cc_program = '0', '1'
+            else:
+                _rapa_program, _cc_program = '1', '0'
+
+            self.all_data.uns['programs']['rapa_program'] = _rapa_program
+            self.all_data.uns['programs']['cell_cycle_program'] = _cc_program
+
+            def _transfer_programs(adata):
+                adata.var['program'] = self.all_data.var['program'].reindex(adata.var_names)
+                adata.obs['Pool_Combined'] = adata.obs['Pool'].astype(str)
+                adata.obs.loc[adata.obs['Pool_Combined'] == '1', 'Pool_Combined'] = '12'
+                adata.obs.loc[adata.obs['Pool_Combined'] == '2', 'Pool_Combined'] = '12'
+
+            self.apply_inplace_to_expts(_transfer_programs)
+            
+            self.apply_inplace_to_expts(
+                _ifv.times.program_times,
+                {_rapa_program: 'Pool_Combined',
+                 _cc_program: 'CC'},
+                {_rapa_program: RAPA_TIME_ORDER,
+                 _cc_program: CC_TIME_ORDER},
+                layer='counts',
+                verbose=True
+            )
+            
+            self.apply_inplace_to_expts(
+                _ifv.global_graph,
+                verbose=True
+            )
+
+            def _sort_out_times(adata):
+                adata.obs[RAPA_TIME_COL] = adata.obs[f'program_{_rapa_program}_time'].copy()
+                
+                _ifv.times.wrap_times(adata, _cc_program, CC_LENGTH)
+                adata.obs[CC_TIME_COL] = adata.obs[f'program_{_cc_program}_time'].copy()
+                
+                adata.obsp[RAPA_GRAPH_OBSP] = adata.obsp[f'program_{_rapa_program}_distances']
+                adata.obsp[CC_GRAPH_OBSP] = adata.obsp[f'program_{_cc_program}_distances']
+                
+                del adata.obsp[f'program_{_rapa_program}_distances']
+                del adata.obsp[f'program_{_cc_program}_distances']
+
+            self.apply_inplace_to_expts(_sort_out_times)
+
+            self.save()
         
         
 def _gene_metadata(adata):
@@ -400,3 +585,9 @@ def _dc_select(obsm_data, n_dcs=15):
 def _fix_palantir(adata, obsm_key):
     nd = _dc_select(adata.obsm[obsm_key])
     adata.obsm[obsm_key] = nd
+
+def _add_broad_category(adata):
+    adata.var['category'] = "NA"
+    adata.var.loc[functools.reduce(lambda x, y: x | adata.var[y], [adata.var['G1'], 'G2', 'M', 'M-G1', 'S']), 'category'] = "CC"
+    adata.var.loc[functools.reduce(lambda x, y: adata.var[x] | adata.var[y], ['RP', 'RiBi']), 'category'] = "RP"
+    adata.var['category'] = _pd.Categorical(adata.var['category'], categories=["NA","RP","CC"])

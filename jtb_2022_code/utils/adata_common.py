@@ -9,10 +9,10 @@ def get_clean_anndata(full_adata, bool_idx=None, layer="X", include_pca=False,
     dref = full_adata.X if layer == "X" else full_adata.layers[layer]
     
     if bool_idx is not None:
-        new_adata = _ad.AnnData(dref[bool_idx, :].copy())
+        new_adata = _ad.AnnData(dref[bool_idx, :].copy(), dtype=dref.dtype)
         new_adata.obs = full_adata.obs.loc[bool_idx, :].copy()
     else:
-        new_adata = _ad.AnnData(dref.copy())
+        new_adata = _ad.AnnData(dref.copy(), dtype=dref.dtype)
         new_adata.obs = full_adata.obs.copy()
         
     new_adata.var = full_adata.var.copy()

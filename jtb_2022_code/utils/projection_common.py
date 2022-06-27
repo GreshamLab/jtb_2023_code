@@ -12,7 +12,7 @@ from .figure_common import *
 from ..figure_constants import *
 
 
-def do_pca(adata, n_pcs, normalize=True):
+def do_pca(adata, n_pcs, normalize=False):
     # If there is no projection in the data object, make it
     if 'X_pca' not in adata.obsm:
         if VERBOSE:
@@ -20,19 +20,14 @@ def do_pca(adata, n_pcs, normalize=True):
         
         if "counts" not in adata.layers:
             adata.layers["counts"] = adata.X.copy()
-        
-        # Normalize and log1p
-        adata.X = adata.X.astype(float)
-        
+
         if normalize:
+            adata.X = adata.X.astype(float)
             _sc.pp.normalize_per_cell(adata)
             _sc.pp.log1p(adata)
 
         # Do PCA, kNN, and UMAP with constant parameters
         _sc.pp.pca(adata, n_comps=n_pcs)
-        
-        # Restore count data to X
-        adata.X = adata.layers['counts'].copy()
        
     return adata
 

@@ -119,7 +119,7 @@ def figure_1_supplement_1_plot(data, save=True):
     axd['ncells'].set_xticks(np.arange(8), labels=np.arange(8) + 1)
 
     fig_refs['ncells_lax'] = add_legend_axis(axd['ncells'], size='10%')
-    fig_refs['ncells_legend'] = fig_refs['ncells_lax'].legend(title="Experiment",
+    fig_refs['ncells_legend'] = fig_refs['ncells_lax'].legend(title="Expt. Rep.",
                                                               handles=[patches.Patch(color=hexcolor) for hexcolor in expt_palette(long=True)],
                                                               labels=['1 [WT]', '2 [WT]', '1 [fpr1]', '2 [fpr1]'],
                                                               frameon=False,
@@ -149,7 +149,7 @@ def figure_1_supplement_1_plot(data, save=True):
 
 
     fig_refs['ncounts_lax'] = add_legend_axis(axd['ncounts'], size='10%')
-    fig_refs['ncounts_legend'] = fig_refs['ncounts_lax'].legend(title="Experiment",
+    fig_refs['ncounts_legend'] = fig_refs['ncounts_lax'].legend(title="Expt. Rep.",
                                                                 handles=[patches.Patch(color=hexcolor) for hexcolor in expt_palette(long=True)],
                                                                 labels=['1 [WT]', '2 [WT]', '1 [fpr1]', '2 [fpr1]'],
                                                                 frameon=False,

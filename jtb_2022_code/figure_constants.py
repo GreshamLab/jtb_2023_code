@@ -4,7 +4,8 @@ from .utils.figure_filenames import *
 
 DataFile.set_path("~/Documents/jtb_2022_code/Data/")
 FigureFile.set_path("~/Documents/jtb_2022_code/Figures/")
- 
+ScratchFile.set_path("/scratch/cj59/RAPA/")
+
 # Print status updates
 VERBOSE = True
 
@@ -14,11 +15,15 @@ RAPA_BULK_EXPR_FILE_META_DATA_COLS = ["Oligo", "Time", "Replicate"]
 RAPA_BULK_EXPR_FILE_TIMES = [2.5, 5, 7.5, 10, 15, 30, 45, 60, 90, 120]
 
 # Single cell expression data filenames
-RAPA_SINGLE_CELL_EXPR_FILE = str(DataFile("/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE.h5ad"))
-RAPA_SINGLE_CELL_EXPR_PROCESSED = str(DataFile("/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_FIGS.h5ad"))
+RAPA_SINGLE_CELL_EXPR_FILE = str(ScratchFile("2021_RAPA_TIMECOURSE.h5ad"))
+RAPA_SINGLE_CELL_EXPR_PROCESSED = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS.h5ad"))
+RAPA_SINGLE_CELL_VELOCITY = str(ScratchFile("2021_RAPA_VELOCITY_FIGS.h5ad"))
+RAPA_SINGLE_CELL_DENOISED = str(ScratchFile("2021_RAPA_DENOISED_FIGS.h5ad"))
 
 # For formatting (needs {e} and {g})
-RAPA_SINGLE_CELL_EXPR_BY_EXPT = str(DataFile("/scratch/cj59/RAPA/2021_RAPA_TIMECOURSE_FIGS_{e}_{g}.h5ad"))
+RAPA_SINGLE_CELL_EXPR_BY_EXPT = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS_{e}_{g}.h5ad"))
+RAPA_SINGLE_CELL_VELOCITY_BY_EXPT = str(ScratchFile("2021_RAPA_VELOCITY_FIGS_{e}_{g}.h5ad"))
+RAPA_SINGLE_CELL_DENOISED_BY_EXPT = str(ScratchFile("2021_RAPA_DENOISED_FIGS_{e}_{g}.h5ad"))
 
 # Pseudotime TSV files keyed by (method, is_dewakss), value (file name, has_index)
 PSEUDOTIME_FILES = {('dpt', False): (str(DataFile("2021_RAPA_TIMECOURSE_DPT.tsv.gz")), True),
@@ -55,6 +60,14 @@ OTHER_GROUP_COL = 'Other'
 CELLCYCLE_GROUP_COL = 'Cell Cycle'
 GENE_CAT_COLS = ['RP', 'RiBi', 'iESR', CELLCYCLE_GROUP_COL, OTHER_GROUP_COL]
 
+# ADATA keys
+RAPA_TIME_COL = 'program_rapa_time'
+CC_TIME_COL = 'program_cc_time'
+RAPA_GRAPH_OBSP = 'program_rapa_distances'
+CC_GRAPH_OBSP = 'program_cc_distances'
+RAPA_VELO_LAYER = 'rapamycin_velocity'
+CC_VELO_LAYER = 'cell_cycle_velocity'
+
 # Umap parameters
 UMAP_NPCS = 50
 UMAP_NNS = 200
@@ -72,14 +85,21 @@ GENE_PALETTE = "Dark2"
 CC_PALETTE = "Set2"
 GENE_CAT_PALETTE = "Set1"
 
+CATEGORY_COLORS = ["gray", "skyblue", "lightgreen"]
+CLUSTER_PALETTE = 'tab20'
+PROGRAM_PALETTE = 'Pastel2'
+
 # Output file names (without extensions)
 FIGURE_1_FILE_NAME = str(FigureFile("Figure_1"))
 FIGURE_1_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_1_1"))
 FIGURE_1_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_1_2"))
 FIGURE_2_FILE_NAME = str(FigureFile("Figure_2"))
-FIGURE_2_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_2_1"))
-FIGURE_2_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_2_2"))
+FIGURE_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_2"))
 FIGURE_3_FILE_NAME = str(FigureFile("Figure_3"))
+FIGURE_3_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_1"))
+FIGURE_3_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_2"))
+FIGURE_4_FILE_NAME = str(FigureFile("Figure_4"))
+FIGURE_4_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4_1"))
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)
@@ -92,11 +112,36 @@ FIGURE_1A_LFC_THRESHOLD = _np.log2(1.25)
 FIGURE_1A_PADJ_THRESHOLD = 0.01
 
 ### TIME CONSTANTS ###
-POOL_TIMES = [(1, 0, 20),
-              (2, 0, 20),
-              (3, 20, 30),
-              (4, 30, 40),
-              (5, 40, 50),
-              (6, 50, 60),
-              (7, 60, 70),
-              (8, 70, 80)]
+CC_LENGTH = 88
+
+### SELECT GENES FOR FIGURES ###
+FIGURE_4_GENES = ["YKR039W", "YOR063W"]
+
+# FROM SPELLMAN98 #
+# ADJUSTED TO 88 MIN #
+#CC_TIME_ORDER = {
+#    'M-G1': ('G1', 61.6, 79.2),
+#    'G1': ('S', 79.2, 96.8),
+#    'S': ('G2', 8.8, 26.4),
+#    'G2': ('M', 26.4, 44), 
+#    'M': ('M-G1', 44, 61.6)
+#}
+
+# [10, 30, 19, 10, 19]
+CC_TIME_ORDER = {
+    'M-G1': ('G1', 5, 25),
+    'G1': ('S', 25, 49.5),
+    'S': ('G2', 49.5, 64),
+    'G2': ('M', 64, 78.5), 
+    'M': ('M-G1', 78.5, 93)
+}
+
+
+RAPA_TIME_ORDER = {
+    '12': ('3', -5, 5),
+    '3': ('4', 5, 15),
+    '4': ('5', 15, 25),
+    '5': ('6', 25, 35), 
+    '6': ('7', 35, 45),
+    '7': ('8', 45, 55)
+}

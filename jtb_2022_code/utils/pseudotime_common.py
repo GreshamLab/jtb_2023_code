@@ -6,8 +6,7 @@ import os as _os
 from joblib import parallel_backend as _parallel_backend
 from scipy.stats import spearmanr as _spearmanr
 
-from inferelator_prior.velocity.calc import calc_velocity
-from inferelator_prior.velocity.times import assign_times_from_pseudotime, assign_times_from_pseudotime_sliding
+from inferelator_velocity import calc_velocity
 
 from .adata_common import *
 from .projection_common import *
@@ -96,7 +95,7 @@ def spearman_rho_grid(data, obsm_key, uns_key, average_1_2_pools=True):
     
     return data
 
-
+"""
 def calculate_times_velocities(data,
                                transform_expr=None,
                                    pt_obs_key=PCA_PT, 
@@ -134,7 +133,7 @@ def do_time_assign_by_pool(adata, pt_obs_key='pca_pt', time_obs_key=None, quanti
         time_obs_key = "time_" + pt_obs_key
         
     if time_obs_key in adata.obs and not force:
-        return adata
+        return adata￼
     
     pseudotime = adata.obs[pt_obs_key].values
     labels = adata.obs['Pool'].values
@@ -168,3 +167,4 @@ def do_time_assign_by_pool(adata, pt_obs_key='pca_pt', time_obs_key=None, quanti
         adata.obs.loc[outlier_mask, time_obs_key] = _np.nan
     
     return adata
+"""
