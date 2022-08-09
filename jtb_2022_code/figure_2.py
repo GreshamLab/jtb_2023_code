@@ -87,6 +87,9 @@ def plot_figure_2(data, save=True):
 
         _time_x = expt_ref.obs['program_rapa_time'].values[overplot_shuffle]
         _time_y = expt_ref.obs['program_cc_time'].values[overplot_shuffle]
+        
+        _time_y[_time_y > CC_LENGTH] = _time_y[_time_y > CC_LENGTH] - CC_LENGTH
+        _time_y[_time_y < 0] = _time_y[_time_y < 0] + CC_LENGTH
 
         axd[f'rep_t'].scatter(_time_x, _time_y, 
                               c=to_pool_colors(expt_ref.obs['Pool'])[overplot_shuffle], 
@@ -101,10 +104,10 @@ def plot_figure_2(data, save=True):
     axd[f'rep_t'].set_ylabel(f"Cell Cycle Time\n[min]")
     fig.text(0.5, 0.16, 'Rapamycin Response Time [min]', ha='center', va='center')
     axd[f'rep_t'].set_xlim(-10, 60)
-    axd[f'rep_t'].set_ylim(0, 88)
+    axd[f'rep_t'].set_ylim(0, CC_LENGTH)
 
     axd[f'rep_cc'].set_xlim(-10, 60)
-    axd[f'rep_cc'].set_ylim(0, 88)
+    axd[f'rep_cc'].set_ylim(0, CC_LENGTH)
     axd[f'rep_cc'].set_yticklabels([])
     axd[f'rep_cc'].annotate(f"n = {np.sum(data.all_data.obs['Gene'] == 'WT')}", xy=(5, 0.2),  
                             xycoords='data', xytext=(0.1, 0.05), 

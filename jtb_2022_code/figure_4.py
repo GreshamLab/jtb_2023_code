@@ -41,7 +41,7 @@ def plot_figure_4(data, save=True):
                                   gridspec_kw=dict(width_ratios=[1, 0.01, 1, 0.2], 
                                                    height_ratios=[2, 1, 1, 1, 1],
                                                    wspace=0.25, hspace=0.5), 
-                                  figsize=(6, 8), dpi=300)
+                                  figsize=(6, 9), dpi=300)
 
     fig_refs['schematic'] = axd['schematic'].imshow(plt.imread(FIG3A_FILE_NAME), aspect='equal')
 
@@ -82,7 +82,7 @@ def plot_figure_4(data, save=True):
         ax.spines['bottom'].set_position(('data', 0.0))
         ax.spines['top'].set_color('none')
 
-    def _gene_data(gene, t_key='time_pca_pt', layer='FIG4_EXPR'):    
+    def _gene_data(gene, layer='FIG4_EXPR'):    
         g_data = np.concatenate([data.expt_data[(i, "WT")].obsm[layer][:, [gene == x for x in FIGURE_4_GENES]].flatten()
                                  for i in range(1, 3)])
         t_data = np.concatenate([data.expt_data[(i, "WT")].obs[RAPA_TIME_COL].values

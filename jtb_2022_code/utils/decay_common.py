@@ -64,7 +64,13 @@ def _calc_decay(expr, velo, include_alpha=False, decay_quantiles=(0.0, 0.05)):
     return decay.calc_decay(expr, velo, include_alpha=include_alpha, decay_quantiles=decay_quantiles)
 
 def _calc_decay_windowed(expr, velo, times, include_alpha=False, decay_quantiles=(0.00, 0.05), 
-                         bootstrap=True, t_min=0, t_max=80):
+                         bootstrap=True, t_min=0, t_max=80, time_wrap=None):
+    
+    if time_wrap is not None:
+        times = times.copy()
+        times[times < 0] = times[times < 0] + time_wrap
+        times[times > time_wrap] = times[times > time_wrap] - time_wrap
+
     
     return decay.calc_decay_sliding_windows(expr, 
                                             velo, 

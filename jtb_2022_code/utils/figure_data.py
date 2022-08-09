@@ -18,6 +18,7 @@ from .decay_common import calc_decays, calc_decay_windows, _calc_decay_windowed,
 from .velocity_common import calculate_velocities
 from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools
 from .process_published_data import process_all_decay_links
+from sklearn.metrics import pairwise_distances
 
 class FigureSingleCellData:
     
@@ -261,10 +262,7 @@ class FigureSingleCellData:
             
             adata.obs[RAPA_TIME_COL] = self.expt_data[(expt, gene)].obs[RAPA_TIME_COL]
             adata.obs[CC_TIME_COL] = self.expt_data[(expt, gene)].obs[CC_TIME_COL]
-            
-            adata.obsp[RAPA_GRAPH_OBSP] = self.expt_data[(expt, gene)].obsp[RAPA_GRAPH_OBSP]
-            adata.obsp[CC_GRAPH_OBSP] = self.expt_data[(expt, gene)].obsp[CC_GRAPH_OBSP]
-            
+                       
             calculate_velocities(adata)
             adata.write(_fn)
             
@@ -342,6 +340,7 @@ class FigureSingleCellData:
                     t_max=tmax,
                     include_alpha=True,
                     bootstrap=False,
+                    time_wrap=None if time_key != CC_TIME_COL else CC_LENGTH
                 )
                 
                 self.all_data.uns[g_key + "_window_decay"] = {'params': 
@@ -380,7 +379,11 @@ class FigureSingleCellData:
                                 var=self.expt_data[(expt, gene)].var.copy(),
                                 dtype=int)
             
-            run_dewakss(adata)
+            if 'noise2self_distance_graph' not in self.expt_data[(expt, gene)].obsp:
+                _ifv.global_graph(self.expt_data[(expt, gene)], verbose=True)
+                
+            adata.obsp['noise2self_distance_graph'] = self.expt_data[(expt, gene)].obsp['noise2self_distance_graph'].copy()
+            run_dewakss(adata)            
             adata.write(_fn)
             
             return adata           
@@ -424,8 +427,12 @@ class FigureSingleCellData:
     def process_programs(self, recalculate=False):
         
         if recalculate or 'program' not in self.all_data.var:
-            _ifv.program_select(self.all_data, layer='counts', verbose=True)
-
+            _ifv.program_select(
+                self.all_data,
+                layer='counts',
+                verbose=True
+            )
+                
             if _np.sum(self.all_data.var['program'] == '0') > _np.sum(self.all_data.var['program'] == '1'):
                 _rapa_program, _cc_program = '0', '1'
             else:
@@ -440,7 +447,9 @@ class FigureSingleCellData:
                 adata.obs.loc[adata.obs['Pool_Combined'] == '1', 'Pool_Combined'] = '12'
                 adata.obs.loc[adata.obs['Pool_Combined'] == '2', 'Pool_Combined'] = '12'
 
-            self.apply_inplace_to_expts(_transfer_programs)
+            self.apply_inplace_to_expts(
+                _transfer_programs
+            )
             
             self.apply_inplace_to_expts(
                 _ifv.times.program_times,
@@ -459,21 +468,46 @@ class FigureSingleCellData:
 
             def _sort_out_times(adata):
                 adata.obs[RAPA_TIME_COL] = adata.obs[f'program_{_rapa_program}_time'].copy()
-                
-                _ifv.times.wrap_times(adata, _cc_program, CC_LENGTH)
                 adata.obs[CC_TIME_COL] = adata.obs[f'program_{_cc_program}_time'].copy()
                 
-                adata.obsp[RAPA_GRAPH_OBSP] = adata.obsp[f'program_{_rapa_program}_distances']
-                adata.obsp[CC_GRAPH_OBSP] = adata.obsp[f'program_{_cc_program}_distances']
-                
-                del adata.obsp[f'program_{_rapa_program}_distances']
-                del adata.obsp[f'program_{_cc_program}_distances']
-
             self.apply_inplace_to_expts(_sort_out_times)
+            
+            self.save()
+            
+    def calc_gene_dists(self, recalculate=False):
+
+        if recalculate or 'cosine_distance' not in self.all_data.uns['programs']:
+
+            _dists = _ad.AnnData(
+                self.all_data.layers['counts'],
+                dtype=float,
+                var=self.all_data.var
+            )
+
+            _sc.pp.normalize_per_cell(_dists)
+            _sc.pp.log1p(_dists)   
+            _sc.pp.highly_variable_genes(_dists, max_mean=_np.inf, min_disp=0.01)
+
+            _dists._inplace_subset_var(_dists.var['highly_variable'].values)
+
+            _sc.pp.pca(_dists, n_comps=self.all_data.uns['programs']['n_comps'])    
+
+            print(f"Using {self.all_data.uns['programs']['n_comps']} PCs for distance")
+            _dists = (_dists.obsm['X_pca'] @ _dists.varm['PCs'].T).T
+
+            _gc.collect()
+
+            for metric in ['cosine', 'euclidean', 'manhattan']:
+                print(f"Calculating metric {metric} on data {_dists.shape}")
+                self.all_data.uns['programs'][f'{metric}_distance'] = pairwise_distances(
+                    _dists, metric=metric
+                )
+
+            del _dists
 
             self.save()
-        
-        
+
+
 def _gene_metadata(adata):
     # Gene common names
     if "CommonName" not in adata.var:

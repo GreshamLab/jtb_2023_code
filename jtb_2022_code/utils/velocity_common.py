@@ -12,10 +12,10 @@ def calculate_velocities(data,
                          force=False,
                          wrap_cc_time=88):
     
-    groups = [('cell_cycle', CC_TIME_COL, CC_GRAPH_OBSP), 
-              ('rapamycin', RAPA_TIME_COL, RAPA_GRAPH_OBSP)]
+    groups = [('cell_cycle', CC_TIME_COL), 
+              ('rapamycin', RAPA_TIME_COL)]
     
-    for velo_key, time_key, distance_key in groups:
+    for velo_key, time_key in groups:
     
         layer_out = velo_key + "_velocity"
         _wrap_time = None if time_key != 'cell_cycle' else wrap_cc_time

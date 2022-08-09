@@ -27,7 +27,7 @@ def run_dewakss(data, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS):
             
         _do_dewakss(data, n_pcs=n_pcs, n_neighbors=n_neighbors)
         
-        print("\tBuilding denoised AnnData Objet")
+        print("Building denoised AnnData Object")
         data.X = data.layers['denoised']
         _sc.pp.pca(data, n_comps=100)
         

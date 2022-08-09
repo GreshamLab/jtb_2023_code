@@ -100,6 +100,7 @@ FIGURE_3_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_1"))
 FIGURE_3_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_2"))
 FIGURE_4_FILE_NAME = str(FigureFile("Figure_4"))
 FIGURE_4_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4_1"))
+FIGURE_5_FILE_NAME = str(FigureFile("Figure_5"))
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)
@@ -116,6 +117,7 @@ CC_LENGTH = 88
 
 ### SELECT GENES FOR FIGURES ###
 FIGURE_4_GENES = ["YKR039W", "YOR063W"]
+FIGURE_5_GENES = ["YGR109C", "YNR009W", "YIL131C", "YPR119W"]
 
 # FROM SPELLMAN98 #
 # ADJUSTED TO 88 MIN #
@@ -129,11 +131,11 @@ FIGURE_4_GENES = ["YKR039W", "YOR063W"]
 
 # [10, 30, 19, 10, 19]
 CC_TIME_ORDER = {
-    'M-G1': ('G1', 5, 25),
-    'G1': ('S', 25, 49.5),
-    'S': ('G2', 49.5, 64),
-    'G2': ('M', 64, 78.5), 
-    'M': ('M-G1', 78.5, 93)
+    'M-G1': ('G1', 7, 22.5),
+    'G1': ('S', 22.5, 39.5),
+    'S': ('G2', 39.5, 56.5),
+    'G2': ('M', 56.5, 77.5), 
+    'M': ('M-G1', 77.5, 95)
 }
 
 
