@@ -27,6 +27,9 @@ def expt_palette(long=False):
     ep = _cmap_to_palette(EXPT_PALETTE, 8)
     return [ep[2], ep[5]] if not long else [ep[2], ep[5], ep[1], ep[6]]
 
+def to_expt_colors(series_data):
+    return series_data.map({k: v for k, v in zip(range(1, 2), expt_palette())}).values
+
 def strain_palette():
     ep = _cmap_to_palette(GENE_PALETTE, 8)
     return [ep[0], ep[3]]

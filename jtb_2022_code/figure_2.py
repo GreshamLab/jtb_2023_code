@@ -13,19 +13,22 @@ import math
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
 
+from inferelator_velocity.utils.keys import (
+    PROGRAM_KEY
+)
 
 def plot_figure_2(data, save=True):
 
     CATEGORY_COLORS = ["gray", "skyblue", "lightgreen"]
-    PROGRAM_COLORS = [colors.rgb2hex(plt.get_cmap(PROGRAM_PALETTE)(k)) for k in range(len(data.all_data.var['program'].cat.categories))]
+    PROGRAM_COLORS = [colors.rgb2hex(plt.get_cmap(PROGRAM_PALETTE)(k)) for k in range(len(data.all_data.var[PROGRAM_KEY].cat.categories))]
 
     joint_colormap = colors.ListedColormap(CATEGORY_COLORS + PROGRAM_COLORS)
     
-    _ami_linkage = linkage(squareform(data.all_data.uns['programs']['information_distance'], checks=False))
+    _ami_linkage = linkage(squareform(data.all_data.uns[PROGRAM_KEY]['information_distance'], checks=False))
     _ami_dendrogram = dendrogram(_ami_linkage, no_plot=True)
     _ami_idx = np.array(_ami_dendrogram['leaves'])
-    _ami_distances = data.all_data.uns['programs']['information_distance'][_ami_idx, :][:, _ami_idx]
-    _ami_information = data.all_data.uns['programs']['mutual_information'][_ami_idx, :][:, _ami_idx]
+    _ami_distances = data.all_data.uns[PROGRAM_KEY]['information_distance'][_ami_idx, :][:, _ami_idx]
+    _ami_information = data.all_data.uns[PROGRAM_KEY]['mutual_information'][_ami_idx, :][:, _ami_idx]
 
     layout = [['schematic', 'schematic', 'schematic', 'schematic', 'schematic'],
               ['rows', 'matrix', 'matrix', 'matrix', 'dendro'],
@@ -52,10 +55,10 @@ def plot_figure_2(data, save=True):
     axd['schematic'].imshow(plt.imread(FIG2A_FILE_NAME), aspect='equal')
     axd['schematic'].axis('off')
 
-    _gene_order = data.all_data.uns['programs']['metric_genes'][_ami_idx]
+    _gene_order = data.all_data.uns[PROGRAM_KEY]['metric_genes'][_ami_idx]
 
     _cat_series = data.all_data.var.loc[_gene_order, 'category'].cat.codes
-    _prog_series = data.all_data.var.loc[_gene_order, 'program'].astype(int) + _cat_series.max() + 1
+    _prog_series = data.all_data.var.loc[_gene_order, PROGRAM_KEY].astype(int) + _cat_series.max() + 1
 
     _rcolors = pd.DataFrame([_cat_series, _prog_series]).T.loc[_gene_order, :]
 
@@ -105,13 +108,19 @@ def plot_figure_2(data, save=True):
     fig.text(0.5, 0.16, 'Rapamycin Response Time [min]', ha='center', va='center')
     axd[f'rep_t'].set_xlim(-10, 60)
     axd[f'rep_t'].set_ylim(0, CC_LENGTH)
+    axd[f'rep_t'].set_yticks([0, int(CC_LENGTH / 2), CC_LENGTH])
+    axd[f'rep_t'].set_yticks([0, int(CC_LENGTH / 2), CC_LENGTH])
+    axd[f'rep_t'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black', alpha=0.5)
 
     axd[f'rep_cc'].set_xlim(-10, 60)
     axd[f'rep_cc'].set_ylim(0, CC_LENGTH)
+    axd[f'rep_cc'].set_yticks([0, int(CC_LENGTH / 2), CC_LENGTH])
     axd[f'rep_cc'].set_yticklabels([])
     axd[f'rep_cc'].annotate(f"n = {np.sum(data.all_data.obs['Gene'] == 'WT')}", xy=(5, 0.2),  
-                            xycoords='data', xytext=(0.1, 0.05), 
-                            textcoords='axes fraction')
+                            xycoords='data', xytext=(0.50, 0.05), 
+                            textcoords='axes fraction', fontsize='xx-small')
+    axd[f'rep_cc'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black', alpha=0.5)
+
 
     add_legend(axd['t_cbar'], pool_palette(), list(range(1, 9)), fontsize='x-small', horizontal=True)
     add_legend(axd['cc_cbar'], cc_palette(), CC_COLS, title="Phase", fontsize='x-small')

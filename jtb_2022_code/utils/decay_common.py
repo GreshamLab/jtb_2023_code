@@ -1,9 +1,16 @@
 from inferelator_velocity import decay
 import numpy as np
 
-def calc_decays(adata, velocity_key, output_key='decay_windows', output_alpha_key='output_alpha',
-                include_alpha=False, decay_quantiles=(0.00, 0.05),
-                layer="X", force=False):
+def calc_decays(
+    adata,
+    velocity_key,
+    output_key='decay_windows',
+    output_alpha_key='output_alpha',
+    include_alpha=False,
+    decay_quantiles=(0.0, 0.05),
+    layer="X",
+    force=False
+):
     
     if output_key in adata.var and not force:
         return adata
@@ -28,23 +35,36 @@ def calc_halflives(adata, decay_key='decay', halflife_key='halflife'):
     
     return adata
     
-def calc_decay_windows(adata, velocity_key, time_key, output_key='decay_windows', output_alpha_key='output_alpha',
-                       include_alpha=False, decay_quantiles=(0.00, 0.05), 
-                       bootstrap=False, force=False, layer='X', t_min=0, t_max=80):
+def calc_decay_windows(
+    adata,
+    velocity_key,
+    time_key,
+    output_key='decay_windows',
+    output_alpha_key='output_alpha',
+    include_alpha=False,
+    decay_quantiles=(0.0, 0.05), 
+    bootstrap=False,
+    force=False,
+    layer='X',
+    t_min=0,
+    t_max=80
+):
     
     if output_key in adata.varm and not force:
         return adata
     
     lref = adata.X if layer == "X" else adata.layers[layer]
     
-    decays, decays_se, a, t_c = _calc_decay_windowed(lref, 
-                                                     adata.layers[velocity_key], 
-                                                     adata.obs[time_key].values,
-                                                     include_alpha=include_alpha, 
-                                                     decay_quantiles=decay_quantiles,
-                                                     t_min=t_min,
-                                                     t_max=t_max,
-                                                     bootstrap=bootstrap)
+    decays, decays_se, a, t_c = _calc_decay_windowed(
+        lref, 
+        adata.layers[velocity_key], 
+        adata.obs[time_key].values,
+        include_alpha=include_alpha, 
+        decay_quantiles=decay_quantiles,
+        t_min=t_min,
+        t_max=t_max,
+        bootstrap=bootstrap
+    )
     
     adata.uns[output_key] = {'params': {'include_alpha': include_alpha, 
                                         'decay_quantiles': list(decay_quantiles),
@@ -63,8 +83,17 @@ def _calc_decay(expr, velo, include_alpha=False, decay_quantiles=(0.0, 0.05)):
     
     return decay.calc_decay(expr, velo, include_alpha=include_alpha, decay_quantiles=decay_quantiles)
 
-def _calc_decay_windowed(expr, velo, times, include_alpha=False, decay_quantiles=(0.00, 0.05), 
-                         bootstrap=True, t_min=0, t_max=80, time_wrap=None):
+def _calc_decay_windowed(
+    expr,
+    velo,
+    times,
+    include_alpha=False,
+    decay_quantiles=(0.0, 0.05), 
+    bootstrap=True,
+    t_min=0,
+    t_max=80,
+    time_wrap=None
+):
     
     if time_wrap is not None:
         times = times.copy()
@@ -72,14 +101,16 @@ def _calc_decay_windowed(expr, velo, times, include_alpha=False, decay_quantiles
         times[times > time_wrap] = times[times > time_wrap] - time_wrap
 
     
-    return decay.calc_decay_sliding_windows(expr, 
-                                            velo, 
-                                            times,
-                                            include_alpha=include_alpha, 
-                                            decay_quantiles=decay_quantiles,
-                                            centers=np.linspace(t_min + 0.5, t_max - 0.5, int(t_max - t_min)),
-                                            width=1.,
-                                            bootstrap_estimates=bootstrap)    
+    return decay.calc_decay_sliding_windows(
+        expr, 
+        velo, 
+        times,
+        include_alpha=include_alpha, 
+        decay_quantiles=decay_quantiles,
+        centers=np.linspace(t_min + 1, t_max - 1, int(t_max - t_min) - 1),
+        width=2.,
+        bootstrap_estimates=bootstrap
+    )    
     
 def _halflife(decay_constants):
     

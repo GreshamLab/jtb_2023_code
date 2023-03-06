@@ -12,7 +12,7 @@ from jtb_2022_code.figure_constants import *
 import numpy as np
 
 from inferelator_velocity.plotting.program_times import program_time_summary
-
+from inferelator_velocity.plotting.mcv_summary import mcv_plot, cumulative_variance_plot
 
 def figure_2_supplement_1_plot(data, save=True):
 
@@ -69,7 +69,94 @@ def figure_2_supplement_1_plot(data, save=True):
     return fig
 
 
-def figure_2_supplement_2_plot(adata, save=True):
+def figure_2_supplement_2_plot(data, save=True):
+
+    ### BUILD PLOT ###
+    fig_refs = {}
+
+    layout = [['.', '.', '.', 'title_all', 'title_all'],
+              ['schema', 'schema', '.', 'mcv_all_0', 'cum_var_all_0'],
+              ['.', '.', '.', '.', '.'],
+              ['title_0_1', 'title_0_1', '.', 'title_1_1', 'title_1_1'],
+              ['mcv_0_1', 'cum_var_0_1', '.', 'mcv_1_1', 'cum_var_1_1'],
+              ['.', '.', '.', '.', '.'],
+              ['title_0_2', 'title_0_2', '.', 'title_1_2', 'title_1_2'],
+              ['mcv_0_2', 'cum_var_0_2', '.', 'mcv_1_2', 'cum_var_1_2'],
+              ['.', '.', '.', '.', '.'],
+              ['title_0_3', 'title_0_3', '.', 'title_1_3', 'title_1_3'],
+              ['mcv_0_3', 'cum_var_0_3', '.', 'mcv_1_3', 'cum_var_1_3'],
+              ['.', '.', '.', '.', '.'],
+              ['title_0_4', 'title_0_4', '.', 'title_1_4', 'title_1_4'],
+              ['mcv_0_4', 'cum_var_0_4', '.', 'mcv_1_4', 'cum_var_1_4'],
+              ['xaxis_lab_0', 'xaxis_lab_0', '.', 'xaxis_lab_1', 'xaxis_lab_1']]
+
+    panel_labels = {
+        'schema': "A",
+        'title_all': "B",
+        'title_0_1': "C",
+        'title_0_2': "D",
+        'title_0_3': "E",
+        'title_0_4': "F"
+
+    }
+
+    pad_height = 0.5
+
+    fig, axd = plt.subplot_mosaic(
+        layout,
+        gridspec_kw=dict(
+            width_ratios=[1, 1, 0.15, 1, 1], 
+            height_ratios=[0.005, 1, pad_height, 0.005, 1, pad_height, 0.005, 1, pad_height, 0.005, 1, pad_height, 0.005, 1, 0.01],
+            wspace=1.5, hspace=0.25
+        ), 
+        figsize=(6, 9), dpi=300
+    )
+
+    for ax_id, label in panel_labels.items():
+        axd[ax_id].set_title(label, loc='left', weight='bold', x=-0.35)
+
+    axd['schema'].imshow(plt.imread(SFIG2A_FILE_NAME), aspect='equal')
+    axd['schema'].axis('off')
+    
+    axd['xaxis_lab_0'].set_title("# Comps", fontsize=10, y=-50)
+    axd['xaxis_lab_0'].axis('off')
+    
+    axd['xaxis_lab_1'].set_title("# Comps", fontsize=10, y=-50)
+    axd['xaxis_lab_1'].axis('off')
+
+    for i, expt in enumerate(['all'] + data.expts):
+
+        d = data.all_data if expt == 'all' else data.expt_data[expt]
+
+        if i == 0:
+
+            mcv_plot(d, ax=axd['mcv_all_0'], add_labels=False)
+            cumulative_variance_plot(d, ax=axd['cum_var_all_0'], add_labels=False)
+
+            axd['title_all'].set_title("Combined Data")
+            axd['title_all'].axis('off')
+            axd['mcv_all_0'].set_ylabel("MSE")
+            axd['cum_var_all_0'].set_ylabel("% Var.")
+
+
+        else:
+
+            for j, p in enumerate(['0', '1']):
+
+                mcv_plot(d, ax=axd[f'mcv_{j}_{i}'], program=p, add_labels=False)
+                cumulative_variance_plot(d, ax=axd[f'cum_var_{j}_{i}'], program=p, add_labels=False)
+                axd[f'mcv_{j}_{i}'].set_ylabel("MSE")
+                axd[f'cum_var_{j}_{i}'].set_ylabel("% Var.")
+                axd[f'title_{j}_{i}'].set_title(f"{'Rapamycin' if p == '0' else 'Cell Cycle'} ({expt[1]} [{expt[0]}]) MCV")
+                axd[f'title_{j}_{i}'].axis('off')
+
+    if save:
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_2.png", facecolor="white", bbox_inches='tight')
+    
+    return fig
+                
+
+def figure_2_supplement_3_plot(adata, save=True):
     
     _ami_idx = np.array(
         dendrogram(
@@ -124,15 +211,15 @@ def figure_2_supplement_2_plot(adata, save=True):
         axd[ax_id].set_title(label, loc='left', weight='bold')
         
     if save:
-        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_2.png", facecolor="white")
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_3.png", facecolor="white")
     
     return fig
 
-def figure_2_supplement_3_10_plot(data, cc_program='1', rapa_program='0', save=True):
+def figure_2_supplement_4_11_plot(data, cc_program='1', rapa_program='0', save=True):
 
     figs = []
     
-    for i, j in zip(range(3, 11, 2), [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
+    for i, j in zip(range(4, 12, 2), [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
 
         _layout = [['pca1', 'M-G1 / G1', 'G1 / S'], ['pca2', 'S / G2', 'G2 / M'], ['hist', 'M / M-G1', 'cbar']]
 

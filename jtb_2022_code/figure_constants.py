@@ -25,29 +25,69 @@ RAPA_SINGLE_CELL_EXPR_BY_EXPT = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS_{e}_{
 RAPA_SINGLE_CELL_VELOCITY_BY_EXPT = str(ScratchFile("2021_RAPA_VELOCITY_FIGS_{e}_{g}.h5ad"))
 RAPA_SINGLE_CELL_DENOISED_BY_EXPT = str(ScratchFile("2021_RAPA_DENOISED_FIGS_{e}_{g}.h5ad"))
 
+# Inferelator files
+INFERELATOR_DATA_FILE = str(ScratchFile("2021_RAPA_INFERELATOR.h5ad"))
+INFERELATOR_PRIORS_FILE = str(ScratchFile("YEASTRACT_20190713_BOTH.tsv.gz"))
+INFERELATOR_TF_NAMES_FILE = str(ScratchFile("tf_names_yeastract.txt"))
+INFERELATOR_GOLD_STANDARD_FILE = str(ScratchFile("tf_names_yeastract.txt"))
+INFERELATOR_RESULTS_FILE = str(DataFile("2021_RAPA_Inferelator_Results.tsv"))
+
+# Latent TSV files
+EXPRESSION_TSV_FILES = {
+    'expression': str(ScratchFile("2021_RAPA_EXPRESSION.tsv.gz")),
+    'denoised': str(ScratchFile("2021_RAPA_DENOISED.tsv.gz")),
+    'velocity': str(ScratchFile("2021_RAPA_VELOCITY.tsv.gz"))
+}
+
+LATENT_DATA_FILES = {
+    'tfa_expression': str(ScratchFile("2021_RAPA_TFA_EXPRESSION.tsv.gz")),
+    'tfa_denoised': str(ScratchFile("2021_RAPA_TFA_DENOISED.tsv.gz")),
+    'tfa_velocity': str(ScratchFile("2021_RAPA_TFA_VELOCITY.tsv.gz")),
+    'tfa_decay_constant': str(ScratchFile("2021_RAPA_TFA_DECAY_20MIN.tsv.gz")),
+    'tfa_decay_latent': str(ScratchFile("2021_RAPA_TFA_DECAY_LATENT.tsv.gz")),
+}
+
+TFA_FILE = str(ScratchFile("2021_RAPA_TFA.h5ad"))
+
+METADATA_DATA_FILES = {
+    'metadata': str(ScratchFile("2021_RAPA_METADATA.tsv.gz")),
+    'gene_metadata': str(ScratchFile("2021_RAPA_GENE_METADATA.tsv.gz"))
+}
+
+AGGREGATE_DATA_FILES = {
+    "rapamycin": str(ScratchFile("2021_RAPA_AGGREGATE_RAPAMYCIN.tsv.gz")),
+    "cell_cycle": str(ScratchFile("2021_RAPA_AGGREGATE_CELL_CYCLE.tsv.gz"))
+}
+
 # Pseudotime TSV files keyed by (method, is_dewakss), value (file name, has_index)
-PSEUDOTIME_FILES = {('dpt', False): (str(DataFile("2021_RAPA_TIMECOURSE_DPT.tsv.gz")), True),
-                    ('cellrank', False): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK.tsv.gz")), True),
-                    ('monocle', False): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE.tsv.gz")), False),
-                    ('palantir', False): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR.tsv.gz")), True),
-                    ('dpt', True): (str(DataFile("2021_RAPA_TIMECOURSE_DPT_DEWAKSS.tsv")), True),
-                    ('cellrank', True): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK_DEWAKSS.tsv")), True),
-                    ('monocle', True): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE_DEWAKSS.tsv.gz")), False),
-                    ('palantir', True): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.tsv.gz")), True)}
+PSEUDOTIME_FILES = {
+    ('dpt', False): (str(DataFile("2021_RAPA_TIMECOURSE_DPT.tsv.gz")), True),
+    ('cellrank', False): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK.tsv.gz")), True),
+    ('monocle', False): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE.tsv.gz")), False),
+    ('palantir', False): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR.tsv.gz")), True),
+    ('dpt', True): (str(DataFile("2021_RAPA_TIMECOURSE_DPT_DEWAKSS.tsv")), True),
+    ('cellrank', True): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK_DEWAKSS.tsv")), True),
+    ('monocle', True): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE_DEWAKSS.tsv.gz")), False),
+    ('palantir', True): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.tsv.gz")), True)
+}
 
 # Existing decay constant data files
 # {DataSet: (File type, Gene Column, Half-life Column, Excel loading engine)}
-DECAY_CONSTANT_FILES = {'Neymotin2014': ('tsv', "Syst", "thalf", None),
-                        'Chan2018': ('tsv', "gene_id", ["halflife_160412_r1", "halflife_160412_r2"], None),
-                        'Geisberg2015': ('excel', "systematic name", "Half-Life           (in minutes)", 'openpyxl'),
-                        'Munchel2011': ('excel', "Systematic Name", "Half-life [min]", 'xlrd'),
-                        'Miller2011': ('tsv', "X1", "wt", None)}
+DECAY_CONSTANT_FILES = {
+    'Neymotin2014': ('tsv', "Syst", "thalf", None),
+    'Chan2018': ('tsv', "gene_id", ["halflife_160412_r1", "halflife_160412_r2"], None),
+    'Geisberg2015': ('excel', "systematic name", "Half-Life           (in minutes)", 'openpyxl'),
+    'Munchel2011': ('excel', "Systematic Name", "Half-life [min]", 'xlrd'),
+    'Miller2011': ('tsv', "X1", "wt", None)
+}
                         
-DECAY_CONSTANT_LINKS = {'Neymotin2014': "https://rnajournal.cshlp.org/content/suppl/2014/08/08/rna.045104.114.DC1/TableS5.xls",
-                        'Chan2018': "https://cdn.elifesciences.org/articles/32536/elife-32536-fig1-data2-v4.txt",
-                        'Geisberg2015': "https://www.cell.com/cms/10.1016/j.cell.2013.12.026/attachment/5d358c57-4ca0-4216-be37-3cc5c909b375/mmc1.xlsx",
-                        'Munchel2011': "https://www.molbiolcell.org/doi/suppl/10.1091/mbc.e11-01-0028/suppl_file/mc-e11-01-0028-s10.xls",
-                        'Miller2011': "https://www.embopress.org/action/downloadSupplement?doi=10.1038%2Fmsb.2010.112&file=msb2010112-sup-0001.txt"}
+DECAY_CONSTANT_LINKS = {
+    'Neymotin2014': "https://rnajournal.cshlp.org/content/suppl/2014/08/08/rna.045104.114.DC1/TableS5.xls",
+    'Chan2018': "https://cdn.elifesciences.org/articles/32536/elife-32536-fig1-data2-v4.txt",
+    'Geisberg2015': "https://www.cell.com/cms/10.1016/j.cell.2013.12.026/attachment/5d358c57-4ca0-4216-be37-3cc5c909b375/mmc1.xlsx",
+    'Munchel2011': "https://www.molbiolcell.org/doi/suppl/10.1091/mbc.e11-01-0028/suppl_file/mc-e11-01-0028-s10.xls",
+    'Miller2011': "https://www.embopress.org/action/downloadSupplement?doi=10.1038%2Fmsb.2010.112&file=msb2010112-sup-0001.txt"
+}
                         
 # Gene metadata filenames
 GENE_GROUP_FILE = str(DataFile("STable6.tsv"))
@@ -77,6 +117,7 @@ UMAP_MIN_DIST = 0.2
 FIG1B_FILE_NAME = str(DataFile("Figure1B_RAW.png"))
 FIG2A_FILE_NAME = str(DataFile("Figure2A_RAW.png"))
 FIG3A_FILE_NAME = str(DataFile("Figure3A_RAW.png"))
+SFIG2A_FILE_NAME = str(DataFile("Supplemental_Figure2A_RAW.png"))
 
 # Color Palettes for Categorical Data
 POOL_PALETTE = "YlGnBu"
@@ -101,6 +142,7 @@ FIGURE_3_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_2"))
 FIGURE_4_FILE_NAME = str(FigureFile("Figure_4"))
 FIGURE_4_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4_1"))
 FIGURE_5_FILE_NAME = str(FigureFile("Figure_5"))
+FIGURE_6_FILE_NAME = str(FigureFile("Figure_6"))
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)

@@ -57,24 +57,19 @@ def plot_figure_1(sc_data, save=True):
                                   constrained_layout=True)
 
     ### PANEL A - IMSHOW HEATMAP ###
-    fig_refs['hm_im'] = axd['hm'].imshow(squeeze_data(plot_genes, FIGURE_1A_MINMAX), 
-                                         cmap='bwr', aspect='auto', interpolation='nearest')
-
-    fig_refs['hm_divider'] = make_axes_locatable(axd['hm'])
-    fig_refs['hm_toppad'] = fig_refs['hm_divider'].append_axes('top', size='3%', pad=0.1)
-    fig_refs['hm_cax'] = fig_refs['hm_divider'].append_axes('bottom', size='2.5%', pad=0.6)
-    fig_refs['hm_bottompad'] = fig_refs['hm_divider'].append_axes('bottom', size='6%', pad=0.1)
-    fig_refs['hm_toppad'].axis('off')
-    fig_refs['hm_bottompad'].axis('off')
-
-    axd['hm'].set_xticks(np.arange(len(plot_x_labels)), labels=plot_x_labels, rotation=90, ha="center")
-    axd['hm'].set_yticks([], labels=[])
+    
+    fig_refs.update(
+        _draw_bulk_heatmap(
+            squeeze_data(plot_genes, FIGURE_1A_MINMAX),
+            axd['hm'],
+            cbar_label="Log2 FC",
+            x_labels=plot_x_labels
+        )
+    )
+    
     axd['hm'].set_ylabel("Genes")
     axd['hm'].set_xlabel("Time [min]")
     axd['hm'].set_title("Rapamycin Response")
-
-    fig_refs['hm_cbar'] = axd['hm'].figure.colorbar(fig_refs['hm_im'], cax=fig_refs['hm_cax'], orientation="horizontal", fraction=1.0)
-    fig_refs['hm_cbar'].set_label("Log2 FC")
 
     ### PANEL B - IMSHOW SCHEMATIC ###
     axd['image'].imshow(plt.imread(FIG1B_FILE_NAME), aspect='equal')
@@ -99,3 +94,45 @@ def plot_figure_1(sc_data, save=True):
 
     return fig
 
+
+def _draw_bulk_heatmap(
+    heatmap_data,
+    ax,
+    cbar_ax=None,
+    cbar_label=None,
+    x_labels=None
+):
+    
+    fig_refs = {}
+    
+    fig_refs['hm_im'] = ax.imshow(
+        heatmap_data,
+        cmap='bwr',
+        aspect='auto',
+        interpolation='nearest'
+    )
+
+    if cbar_ax is None:  
+        fig_refs['hm_divider'] = make_axes_locatable(ax)
+        fig_refs['hm_toppad'] = fig_refs['hm_divider'].append_axes('top', size='3%', pad=0.1)
+        cbar_ax = fig_refs['hm_divider'].append_axes('bottom', size='2.5%', pad=0.6)
+        fig_refs['hm_bottompad'] = fig_refs['hm_divider'].append_axes('bottom', size='6%', pad=0.1)
+        fig_refs['hm_toppad'].axis('off')
+        fig_refs['hm_bottompad'].axis('off')
+        
+    fig_refs['hm_cbar'] = ax.figure.colorbar(
+        fig_refs['hm_im'],
+        cax=cbar_ax,
+        orientation="horizontal",
+        fraction=1.0
+    )
+    
+    if cbar_label is not None:
+        fig_refs['hm_cbar'].set_label(cbar_label)
+
+    if x_labels is not None:
+        ax.set_xticks(np.arange(len(x_labels)), labels=x_labels, rotation=90, ha="center")
+    
+    ax.set_yticks([], labels=[])
+    
+    return fig_refs

@@ -71,7 +71,7 @@ def plot_figure_4(data, save=True):
            
     expr_limits = _get_limits('FIG4_EXPR')
     velocity_limits = _get_limits(f'FIG4_{RAPA_VELO_LAYER}', symmetric=True)
-    halflife_limits = _get_halflife_limits()
+    halflife_limits = _get_halflife_limits(max_halflife=50)
 
     for a in ['time_lgd', 'rep_lgd', 'schematic']:
         axd[a].axis('off')
@@ -167,8 +167,8 @@ def plot_figure_4(data, save=True):
         axd[c_ref].set_xlabel("Expression [counts]", labelpad=10)
 
 
-        for rc, dc in zip(rep_colors, decay_consts):
-            axd[c_ref].axline((0, 0), slope = -1 * dc, c=rc, linestyle='--', linewidth=1.0)
+        #for rc, dc in zip(rep_colors, decay_consts):
+        #    axd[c_ref].axline((0, 0), slope = -1 * dc, c=rc, linestyle='--', linewidth=1.0)
 
         _replot_axes(axd[c_ref])
 
