@@ -6,6 +6,9 @@ DataFile.set_path("~/Documents/jtb_2022_code/Data/")
 FigureFile.set_path("~/Documents/jtb_2022_code/Figures/")
 ScratchFile.set_path("/scratch/cj59/RAPA/")
 
+MAIN_FIGURE_DPI = 300
+SUPPLEMENTAL_FIGURE_DPI = 300
+
 # Print status updates
 VERBOSE = True
 
@@ -19,6 +22,9 @@ RAPA_SINGLE_CELL_EXPR_FILE = str(ScratchFile("2021_RAPA_TIMECOURSE.h5ad"))
 RAPA_SINGLE_CELL_EXPR_PROCESSED = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS.h5ad"))
 RAPA_SINGLE_CELL_VELOCITY = str(ScratchFile("2021_RAPA_VELOCITY_FIGS.h5ad"))
 RAPA_SINGLE_CELL_DENOISED = str(ScratchFile("2021_RAPA_DENOISED_FIGS.h5ad"))
+
+ELIFE_SINGLE_CELL_FILE = "https://cdn.elifesciences.org/articles/51254/elife-51254-code2-v3.tsv.gz"
+ELIFE_SINGLE_CELL_FILE_PROCESSED = str(ScratchFile("2018_ELIFE_STATIC.h5ad"))
 
 # For formatting (needs {e} and {g})
 RAPA_SINGLE_CELL_EXPR_BY_EXPT = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS_{e}_{g}.h5ad"))
@@ -114,10 +120,17 @@ UMAP_NNS = 200
 UMAP_MIN_DIST = 0.2
 
 # Input schematic FIGS
-FIG1B_FILE_NAME = str(DataFile("Figure1B_RAW.png"))
-FIG2A_FILE_NAME = str(DataFile("Figure2A_RAW.png"))
-FIG3A_FILE_NAME = str(DataFile("Figure3A_RAW.png"))
-SFIG2A_FILE_NAME = str(DataFile("Supplemental_Figure2A_RAW.png"))
+FIG1B_FILE_NAME = str(SchematicFile("Figure1B_RAW.png"))
+FIG2A_FILE_NAME = str(SchematicFile("Figure2A_RAW.png"))
+FIG3A_FILE_NAME = str(SchematicFile("Figure3A_RAW.png"))
+SFIG2A_FILE_NAME = str(SchematicFile("SupplementalFigure2A_RAW.png"))
+SFIG3A_FILE_NAME = str(SchematicFile("SupplementalFigure3A_RAW.png"))
+SFIG3B_FILE_NAME = str(SchematicFile("SupplementalFigure3B_RAW.png"))
+FIG_RAPA_LEGEND_FILE_NAME = str(SchematicFile("Figure_RAPA_Legend.png"))
+FIG_CC_LEGEND_FILE_NAME = str(SchematicFile("Figure_CC_Legend.png"))
+FIG_RAPA_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_RAPA_Legend_Vertical.png"))
+FIG_CC_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_CC_Legend_Vertical.png"))
+FIG_EXPT_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_EXPT_Legend_Vertical.png"))
 
 # Color Palettes for Categorical Data
 POOL_PALETTE = "YlGnBu"
@@ -128,7 +141,7 @@ GENE_CAT_PALETTE = "Set1"
 
 CATEGORY_COLORS = ["gray", "skyblue", "lightgreen"]
 CLUSTER_PALETTE = 'tab20'
-PROGRAM_PALETTE = 'Pastel2'
+PROGRAM_PALETTE = 'tab10'
 
 # Output file names (without extensions)
 FIGURE_1_FILE_NAME = str(FigureFile("Figure_1"))
@@ -137,8 +150,7 @@ FIGURE_1_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_1_2"))
 FIGURE_2_FILE_NAME = str(FigureFile("Figure_2"))
 FIGURE_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_2"))
 FIGURE_3_FILE_NAME = str(FigureFile("Figure_3"))
-FIGURE_3_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_1"))
-FIGURE_3_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3_2"))
+FIGURE_3_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3"))
 FIGURE_4_FILE_NAME = str(FigureFile("Figure_4"))
 FIGURE_4_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4_1"))
 FIGURE_5_FILE_NAME = str(FigureFile("Figure_5"))
@@ -146,11 +158,11 @@ FIGURE_6_FILE_NAME = str(FigureFile("Figure_6"))
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)
-N_NEIGHBORS = _np.arange(15, 115, 10)
+N_NEIGHBORS = _np.arange(15, 205, 10)
 N_COMPS = _np.array([5, 10, 15])
 
 ## FIGURE CONSTANTS ##
-FIGURE_1A_MINMAX = 4
+FIGURE_1A_MINMAX = 5
 FIGURE_1A_LFC_THRESHOLD = _np.log2(1.25)
 FIGURE_1A_PADJ_THRESHOLD = 0.01
 

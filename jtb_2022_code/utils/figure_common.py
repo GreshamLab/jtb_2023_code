@@ -28,7 +28,7 @@ def expt_palette(long=False):
     return [ep[2], ep[5]] if not long else [ep[2], ep[5], ep[1], ep[6]]
 
 def to_expt_colors(series_data):
-    return series_data.map({k: v for k, v in zip(range(1, 2), expt_palette())}).values
+    return series_data.map({k: v for k, v in zip(range(1, 3), expt_palette())}).values
 
 def strain_palette():
     ep = _cmap_to_palette(GENE_PALETTE, 8)
@@ -75,19 +75,39 @@ def add_legend(ax, colors, labels, title=None, horizontal=False, **kwargs):
                      **kwargs)
 
 
-def add_legend_in_plot(ax, colors, labels, title=None, frameon=True):
+def add_legend_in_plot(ax, colors, labels, title=None, frameon=True, loc='center right', bbox_to_anchor=(0, 0.85)):
     fakeplots = [ax.scatter([], [], c=c, label=l) for c, l in zip(colors, labels)]
-    return ax.legend(frameon=frameon, 
-                     loc='center right',
-                     bbox_to_anchor=(0, 0.85),
-                     ncol=1,
-                     columnspacing=0,
-                     mode=None,
-                     title=title)
+    return ax.legend(
+        frameon=frameon, 
+        loc=loc,
+        bbox_to_anchor=bbox_to_anchor,
+        ncol=1,
+        columnspacing=0,
+        mode=None,
+        title=title,
+        fontsize=8,
+        markerscale=0.75
+    )
 
-def plot_heatmap(figure, matrix_data, matrix_cmap, matrix_ax, dendro_data=None, dendro_linkage=None, dendro_ax=None, 
-                 row_data=None, row_cmap=None, row_ax=None, row_xlabels=None, vmin=None, vmax=None,
-                 add_colorbar=True, colorbar_ax=None, colorbar_label=None, colorbar_loc=None):
+def plot_heatmap(
+    figure,
+    matrix_data,
+    matrix_cmap,
+    matrix_ax,
+    dendro_data=None,
+    dendro_linkage=None,
+    dendro_ax=None, 
+    row_data=None,
+    row_cmap=None,
+    row_ax=None,
+    row_xlabels=None,
+    vmin=None,
+    vmax=None,
+    add_colorbar=True,
+    colorbar_ax=None,
+    colorbar_label=None,
+    colorbar_loc=None
+):
     
     refs = {}
     
@@ -136,3 +156,13 @@ def plot_heatmap(figure, matrix_data, matrix_cmap, matrix_ax, dendro_data=None, 
         refs['cbar'].set_label(colorbar_label, labelpad=-1)
         
     return refs
+
+def velocity_axes(ax):
+    ax.spines['left'].set_position(('axes', 0.0))
+    ax.spines['right'].set_color('none')
+    ax.spines['bottom'].set_position(('data', 0.0))
+    ax.spines['top'].set_color('none')
+
+def ticks_off(ax):
+    ax.set_yticks([], [])
+    ax.set_xticks([], [])

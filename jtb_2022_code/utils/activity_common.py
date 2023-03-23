@@ -84,96 +84,71 @@ def calc_activity_expression(
         ).values
 
 
-def get_tfa(data_obj, recalculate=False):
+def get_tfa(adata, layer='X', out_obsm='tfa', out_uns='tfa', recalculate=False):
     
-    if os.path.exists(TFA_FILE) and not recalculate:
-        print(f"Reading {TFA_FILE}")
-        return ad.read(TFA_FILE)
+    if out_uns in adata.uns and not recalculate:
+        return adata
     
     prior = pd.read_csv(INFERELATOR_PRIORS_FILE, sep="\t", index_col=0)
-    prior = prior.reindex(data_obj.all_data.var_names, axis=0).fillna(0).astype(int)
+    prior = prior.reindex(adata.var_names, axis=0).fillna(0).astype(int)
     prior = prior.loc[:, (prior != 0).sum(axis=0) > 0].copy()
-    
-    print(f"Loaded prior {prior.shape}")
         
-    adata = ad.AnnData(
-        np.full(
-            (data_obj.all_data.shape[0], prior.shape[1]),
-            np.nan,
-            dtype=float),
-        dtype=float
+    lref = adata.X if layer == 'X' else adata.layers[layer]
+        
+    adata.obsm[out_obsm] = ActivityOnlyPinvTFA().compute_transcription_factor_activity(
+            prior,
+            InferelatorData(
+                expression_data=lref,
+                gene_names=adata.var_names,
+                sample_names=adata.obs_names
+            ),
+            keep_self=True
+        ).values
+    
+    adata.uns[out_uns] = {
+        'columns': prior.columns,
+        'layer': layer,
+        'obms_key': out_obsm
+    }
+    
+    return adata
+    
+
+def calculate_alpha(
+    adata,
+    velocity_layer=None,
+    decay_layer=None,
+    expression_layer='X'
+):
+    
+    expression = InferelatorData(
+        expression_data=adata.layers[expression_layer] if expression_layer != "X" else adata.X,
+        gene_names=adata.var_names,
+        sample_names=adata.obs_names
     )
     
-    adata.var_names = prior.columns
-    adata.obs_names = data_obj.all_data.obs_names
-    
-    adata.obs = data_obj.all_data.obs.copy()    
-    decays = data_obj.all_data.layers['decay_constants']
-    
-    gc.collect()
-    
-    data_obj._unload()
-    
-    gc.collect()
-
-    # (in_layer, out_layer)
-    LAYERS = [
-        ('X', 'X'),
-        ("rapamycin_velocity", "rapamycin_velocity"),
-        ("cell_cycle_velocity", "cell_cycle_velocity"),
-        ("rapamycin_velocity", "rapamycin_transcription_out"),
-        ("cell_cycle_velocity", "cell_cycle_transcription_out"),
-        ("rapamycin_velocity", "rapamycin_transcription_out_constant_decay"),
-        ("cell_cycle_velocity", "cell_cycle_transcription_out_constant_decay")
-    ]
-    
-    for _, l in LAYERS[1:]:
-        adata.layers[l] = np.full_like(adata.X, np.nan)
-    
-    for e, g in data_obj.expts:
+    if velocity_layer is not None:
+        velocity_layer = InferelatorData(
+            expression_data=adata.layers[velocity_layer],
+            gene_names=adata.var_names,
+            sample_names=adata.obs_names
+        )
         
-        _ridx = adata.obs["Experiment"] == e
-        _ridx &= adata.obs["Gene"] == g
-        _ridx = _ridx.values
-        
-        d = data_obj.velocity_data(e, g)
-
-        for l_in, l_out in LAYERS:
-            
-            print(f"Calculating activity {l_out} for {e} ({g})")
-
-            if l_out.endswith("_transcription_out"):
-                activity = calc_activity_expression(
-                    d,
-                    prior,
-                    layer="X",
-                    velocity_layer=l_in,
-                    decay_constants=decays[_ridx, :]
-                )
-            elif l_out.endswith("_constant_decay"):
-                activity = calc_activity_expression(
-                    d,
-                    prior,
-                    layer="X",
-                    velocity_layer=l_in,
-                    global_decay_constant=np.log(2)/15
-                )
-            else:          
-                activity = calc_activity_expression(
-                    d,
-                    prior,
-                    layer=l_in
-                )
-                        
-            lref = adata.X if l_out == "X" else adata.layers[l_out]
-            lref[_ridx, :] = activity
-            
-    adata.write(TFA_FILE)
-
-    data_obj._load()
-
-    return adata
-
+    if decay_layer is not None:
+        decay_layer = InferelatorData(
+            expression_data=adata.layers[decay_layer],
+            gene_names=adata.var_names,
+            sample_names=adata.obs_names
+        )        
+    
+    return extract_transcriptional_output(
+        expression,
+        velocity_layer,
+        gene_and_sample_decay=decay_layer,
+        decay_constant_maximum=np.log(2)
+    ).values
+    
+    
 def get_alpha_per_cell(data_obj):
     
     alphas = ad.AnnData(
@@ -304,6 +279,9 @@ def decay_window_to_cell_layer(
             if _is_rapa:
                 time_windows[0][0] = None
                 time_windows[-1][1] = None
+            else:
+                time_windows[0][0] = 0
+                time_windows[-1][1] = CC_LENGTH
 
             _decay_rows[:, _p_idx] = _cell_decay_constants(
                 adata.varm[f"{program_keys[p]}_window_decay"][_p_idx, :],

@@ -4,210 +4,199 @@ from jtb_2022_code.utils.decay_common import _halflife
 
 import numpy as np
 import pandas as pd
-import anndata as ad
-import scanpy as sc
-import scipy.stats
+
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import squareform
+from scipy.stats import spearmanr
+
+from inferelator_velocity.programs import _leiden_cluster
 
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 
-import gc
+import sys
+sys.setrecursionlimit(10000)
 
-TIME_LIMITS = [-10, 65]
-VLINE_X = 0
-  
 def plot_figure_4(data, save=True):
-    rgen = np.random.default_rng(100)
+    
+    _gene_idx = data.all_data.var['programs'] == data.all_data.uns['programs']['rapa_program']
+    _gene_idx &= np.any(np.abs(data.all_data.varm['rapamycin_window_decay']) != 0, axis=1)
 
-    rep_colors = ['darkslateblue', 'darkgoldenrod', 'black']
+    corr_mat = np.corrcoef(data.all_data.varm['rapamycin_window_decay'][_gene_idx, :])
+    dist_mat = 1 - corr_mat
+    
+    fig = plt.figure(figsize=(6.5, 2.5), dpi=300)
 
-    panel_labels = {'schematic': "A",
-                    'expr_1': "B",
-                    'velocity_1': "C",
-                    'decay_1': "D",
-                    'decaytime_1': "E"}
+    axd = {
+        'clusters': fig.add_axes([0.02, 0.15, 0.02, 0.7]),
+        'matrix': fig.add_axes([0.045, 0.15, 0.25, 0.7]),
+        'info_cbar': fig.add_axes([0.3, 0.15, 0.02, 0.7]),
+        'median': fig.add_axes([0.41, 0.15, 0.25, 0.7]),
+        'aggregate': fig.add_axes([0.74, 0.15, 0.25, 0.7])
+    }
 
-    layout = [['schematic', 'schematic', 'schematic', '.'],
-              ['expr_1', '.', 'expr_2', 'time_lgd'],
-              ['velocity_1', '.', 'velocity_2', 'time_lgd'],
-              ['decay_1', '.', 'decay_2', 'rep_lgd'],
-              ['decaytime_1', '.', 'decaytime_2', 'rep_lgd']]
+    leiden_clusters = pd.Series(
+        _leiden_cluster(dist_mat, 55),
+        index=data.all_data.var_names[_gene_idx]
+    )
+
+    leiden_colors = [
+        colors.rgb2hex(plt.get_cmap('tab20')(k))
+        for k in range(len(np.unique(leiden_clusters)))
+    ]
+    
+    _corr_idx = dendrogram(
+        linkage(squareform(dist_mat, checks=False)),
+        no_plot=True
+    )['leaves']
+
+    corr_mat = corr_mat[_corr_idx, :][:, _corr_idx]
 
     fig_refs = {}
 
-    fig, axd = plt.subplot_mosaic(layout,
-                                  gridspec_kw=dict(width_ratios=[1, 0.01, 1, 0.2], 
-                                                   height_ratios=[2, 1, 1, 1, 1],
-                                                   wspace=0.25, hspace=0.5), 
-                                  figsize=(6, 9), dpi=300)
+    _gene_order = data.all_data.var_names[_gene_idx][_corr_idx]
 
-    fig_refs['schematic'] = axd['schematic'].imshow(plt.imread(FIG3A_FILE_NAME), aspect='equal')
+    leiden_clusters = pd.DataFrame(
+        leiden_clusters.loc[_gene_order],
+        columns=['Cluster']
+    )
 
-    def _minmax(arr):
-        return np.nanmin(arr), np.nanmax(arr)
+    rpl3_cluster = leiden_clusters.loc[
+        leiden_clusters['Cluster'] == leiden_clusters.loc[FIGURE_4_GENES[1], 'Cluster'],
+        :
+    ]
+    
+    cluster_lookup = {
+        leiden_clusters.loc[g, 'Cluster']: g
+        for g in FIGURE_4_GENES
+    }
 
-    def _minmax_list(lst):
-        return min(l[0] for l in lst), max(l[1] for l in lst)
+    fig_refs.update(plot_heatmap(
+        fig,
+        corr_mat,
+        'RdYlBu_r',
+        axd['matrix'],
+        row_data=pd.DataFrame(leiden_clusters.loc[_gene_order]),
+        row_cmap=colors.ListedColormap(leiden_colors),
+        row_ax=axd['clusters'],
+        row_xlabels=["Clust."],
+        colorbar_label=None,
+        colorbar_ax=axd['info_cbar'],
+        vmin=-1, vmax=1
+    ))
 
-    def _get_limits(layer, symmetric=False):
-        limits = {g: _minmax_list(
-            [_minmax(data.expt_data[(j, k)].obsm[layer][:, [x == g for x in FIGURE_4_GENES]]) for j in range(1, 3) for k in ["WT"]]
+    axd['matrix'].set_xlabel("Genes", size=8)
+    axd['matrix'].set_title("Decay Correlation", size=8)
+
+    axd['aggregate'].plot(
+        data.all_data.uns['rapamycin_window_decay']['times'],
+        _halflife(data.all_data.varm['rapamycin_window_decay'][data.all_data.var_names.get_indexer(rpl3_cluster.index), :]).T,
+        alpha=0.1,
+        color='black'
+    )
+
+    axd['aggregate'].plot(
+        data.all_data.uns['rapamycin_window_decay']['times'],
+        _halflife(data.all_data.varm['rapamycin_window_decay'][data.all_data.var_names.get_loc(FIGURE_4_GENES[1]), :]),
+        alpha=1,
+        color='red'
+    )
+
+    axd['aggregate'].set_xlim(-10, 65)
+    axd['aggregate'].set_ylim(0, 50)
+    axd['aggregate'].set_xlabel("Time (minutes)", size=8)
+    axd['aggregate'].set_title("RPL3 Decay Cluster", size=8)
+    axd['aggregate'].set_ylabel("Half-life (minutes)", size=8)
+    axd['aggregate'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black')
+    axd['aggregate'].tick_params(labelsize=8)
+
+    _n_rp = data.all_data.var.loc[rpl3_cluster.index, "RP"].sum()
+    _n_total = len(rpl3_cluster)
+
+    axd['aggregate'].annotate(
+        f"{_n_rp}/{_n_total} RP",
+        (0.40, 0.8),
+        xycoords='axes fraction',
+        fontsize='medium',
+        color='black'
+    )
+
+    axd['aggregate'].plot(
+        (data.all_data.uns['rapamycin_window_decay']['times'][15], 10),
+        (_halflife(data.all_data.varm['rapamycin_window_decay'][data.all_data.var_names.get_loc(FIGURE_4_GENES[1]), 15]), 20),
+        alpha=0.75,
+        color='red'
+    )
+
+    axd['aggregate'].annotate(
+        data.gene_common_name(FIGURE_4_GENES[1]),
+        (11, 20),
+        xycoords='data',
+        fontsize='medium',
+        color='red'
+    )
+
+    _median_data = pd.DataFrame(
+        data.all_data.varm['rapamycin_window_decay'],
+        index=data.all_data.var_names,
+        columns=data.all_data.uns['rapamycin_window_decay']['times']
+    ).reindex(
+        leiden_clusters.index
+    ).groupby(
+        leiden_clusters['Cluster']
+    ).agg('median')
+
+    for i in range(_median_data.shape[0]):
+        
+        _highlight_gene = cluster_lookup.get(i, None)
+                
+        axd['median'].plot(
+            data.all_data.uns['rapamycin_window_decay']['times'],
+            _halflife(_median_data.loc[i, :]),
+            color=leiden_colors[i],
+            alpha=0.1 if _highlight_gene is None else 1.0
         )
-        for g in FIGURE_4_GENES}
-
-        if not symmetric:
-            return {g: (np.floor(v[0]), np.ceil(v[1])) for g, v in limits.items()}
-        else:
-            return {g: (-1 * np.max(np.abs(v)), np.max(np.abs(v))) for g, v in limits.items()}
-
-    def _get_halflife_limits(decay_key='rapamycin_window_decay', se_key='rapamycin_window_decay_se', max_halflife=120):
-        limits = {g: _minmax_list([_minmax(_halflife(data.expt_data[(j, k)].varm[decay_key][data.expt_data[(j, k)].var_names == g, :].flatten() -
-                                                     data.expt_data[(j, k)].varm[se_key][data.expt_data[(j, k)].var_names == g, :].flatten()))
-                                 for j in range(1, 3) 
-                                 for k in ["WT"]]) for g in FIGURE_4_GENES}
-        return {g: (0, np.ceil(min(max_halflife, v[1]))) for g, v in limits.items()}
-           
-    expr_limits = _get_limits('FIG4_EXPR')
-    velocity_limits = _get_limits(f'FIG4_{RAPA_VELO_LAYER}', symmetric=True)
-    halflife_limits = _get_halflife_limits(max_halflife=50)
-
-    for a in ['time_lgd', 'rep_lgd', 'schematic']:
-        axd[a].axis('off')
-
-    def _replot_axes(ax):
-        ax.spines['left'].set_position(('axes', 0.0))
-        ax.spines['right'].set_color('none')
-        ax.spines['bottom'].set_position(('data', 0.0))
-        ax.spines['top'].set_color('none')
-
-    def _gene_data(gene, layer='FIG4_EXPR'):    
-        g_data = np.concatenate([data.expt_data[(i, "WT")].obsm[layer][:, [gene == x for x in FIGURE_4_GENES]].flatten()
-                                 for i in range(1, 3)])
-        t_data = np.concatenate([data.expt_data[(i, "WT")].obs[RAPA_TIME_COL].values
-                                 for i in range(1, 3)])
-        pools = np.concatenate([data.expt_data[(i, "WT")].obs['Pool'].map({k: v for k, v in zip(range(1, 9), pool_palette())}).values
-                                for i in range(1, 3)])
-
-        return g_data, t_data, pools
-
-    def _decay_data(gene):
-        decays = [data.expt_data[(i, "WT")].varm['rapamycin_window_decay'][data.expt_data[(i, "WT")].var_names == gene, :].flatten()
-                  for i in range(1, 3)]
-        times = data.expt_data[(1, "WT")].uns['rapamycin_window_decay']['times']
         
-        decays.append(data.all_data.varm['rapamycin_window_decay'][data.all_data.var_names == gene, :].flatten())
+        if _highlight_gene is not None:
+            
+            if _highlight_gene == "YOR063W":
+                x_1 = 5
+                x_2 = 5
+                y = 30
+            else:
+                x_1 = 23
+                x_2 = 25
+                y = 30
 
-        dcs = [data.expt_data[(i, "WT")].var.loc[data.expt_data[(i, "WT")].var_names == gene, 'rapamycin_decay'][0]
-               for i in range(1, 3)]
-
-        return decays, times, dcs
-
-    for i, g in enumerate(FIGURE_4_GENES):
-        expr_data, time_data, color_data = _gene_data(g)
-        velocity_data, _, _ = _gene_data(g, layer=f'FIG4_{RAPA_VELO_LAYER}')
-
-        overplot_shuffle = np.arange(expr_data.shape[0])
-        rgen.shuffle(overplot_shuffle)
-
-        expr_data = expr_data[overplot_shuffle]
-        time_data = time_data[overplot_shuffle]
-        color_data = color_data[overplot_shuffle]
-        velocity_data = velocity_data[overplot_shuffle]
-
-        ### PANEL A ###
-        a_ref = "expr_" + str(i + 1)
-        fig_refs[a_ref] = axd[a_ref].scatter(x=time_data, 
-                                             y=expr_data,
-                                             c=color_data,
-                                             alpha=0.1, 
-                                             s=2)
-        axd[a_ref].set_xlim(*TIME_LIMITS)
-        axd[a_ref].set_xticks(TIME_LIMITS)
-        axd[a_ref].set_ylim(*expr_limits[g])
-        axd[a_ref].set_ylabel("Expression\n[counts]") if i == 0 else None
-        axd[a_ref].set_xlabel("Time [min]", labelpad=-8)
-        axd[a_ref].set_title(data.gene_common_name(g), 
-                             fontdict={'fontweight': 'bold', 'fontstyle': 'italic'})
-        axd[a_ref].axvline(VLINE_X, 0, 1, linestyle='--', linewidth=1.0, c='black')
-
-        ### PANEL B ###
-        b_ref = "velocity_" + str(i + 1)
-        fig_refs[b_ref] = axd[b_ref].scatter(x=time_data, 
-                                             y=velocity_data,
-                                             c=color_data,
-                                             alpha=0.1, 
-                                             s=2) 
-        
-        axd[b_ref].set_xlim(*TIME_LIMITS)
-        axd[b_ref].set_xticks([TIME_LIMITS[1]])
-        axd[b_ref].set_ylim(*velocity_limits[g])
-        axd[b_ref].set_ylabel("Velocity\n[counts/min]") if i == 0 else None
-        axd[b_ref].set_xlabel("Time [min]", labelpad=10)
-        axd[b_ref].axvline(VLINE_X, 0, 1, linestyle='--', linewidth=1.0, c='black')
-        
-        _replot_axes(axd[b_ref])
-
-        ### PANEL C ###
-        c_ref = "decay_" + str(i + 1)
-        decays, times, decay_consts = _decay_data(g)
-
-
-        fig_refs[c_ref] = axd[c_ref].scatter(x=expr_data, 
-                                             y=velocity_data,
-                                             c=color_data,
-                                             alpha=0.1, 
-                                             s=2)
-
-        axd[c_ref].set_xlim(*expr_limits[g])
-        axd[c_ref].set_xticks([expr_limits[g][1]])
-        axd[c_ref].set_ylim(*velocity_limits[g])
-        axd[c_ref].set_ylabel("Velocity\n[counts/min]") if i == 0 else None
-        axd[c_ref].set_xlabel("Expression [counts]", labelpad=10)
-
-
-        #for rc, dc in zip(rep_colors, decay_consts):
-        #    axd[c_ref].axline((0, 0), slope = -1 * dc, c=rc, linestyle='--', linewidth=1.0)
-
-        _replot_axes(axd[c_ref])
-
-        ### PANEL D ###
-        d_ref = "decaytime_" + str(i + 1)
-
-        for ic, i_decays in zip(rep_colors, decays):
-            axd[d_ref].plot(
-                times, 
-                _halflife(i_decays), 
-                marker=".", 
-                linestyle='-', 
-                linewidth=1.0, 
-                markersize=1, 
-                c=ic,
-                alpha=1 if ic == 'black' else 0.5
+            axd['median'].plot(
+                (data.all_data.uns['rapamycin_window_decay']['times'][x_1], x_2),
+                (_halflife(_median_data.iloc[i, x_1]), y),
+                alpha=1.0,
+                color=leiden_colors[i]
             )
 
-        axd[d_ref].set_xlim(*TIME_LIMITS)
-        axd[d_ref].set_xticks(TIME_LIMITS)
-        axd[d_ref].set_ylim(*halflife_limits[g])
+            axd['median'].annotate(
+                data.gene_common_name(_highlight_gene),
+                (x_2 + 1, y),
+                xycoords='data',
+                fontsize='medium',
+                color=leiden_colors[i]
+            )
 
-        axd[d_ref].axvline(VLINE_X, 0, 1, linestyle='--', linewidth=1.0, c='black')
-        axd[d_ref].set_ylabel("Half-Life\n[min]") if i == 0 else None
-        axd[d_ref].set_xlabel("Time [min]", labelpad=-8)
+    axd['median'].set_xlim(-10, 65)
+    axd['median'].set_ylim(0, 50)
+    axd['median'].set_xlabel("Time (minutes)", size=8)
+    axd['median'].set_title("Cluster Median Decay", size=8)
+    axd['median'].set_ylabel("Half-life (minutes)", size=8)
+    axd['median'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black')
+    axd['median'].tick_params(labelsize=8)
 
+    axd['matrix'].set_title("A", loc='left', x=-0.1, weight='bold')
+    axd['median'].set_title("B", loc='left', x=-0.2, weight='bold')
+    axd['aggregate'].set_title("C", loc='left', x=-0.2, weight='bold')
 
-    fig_refs['time_lgd'] = add_legend(axd['time_lgd'], 
-                                      pool_palette(), 
-                                      data.all_data.obs['Pool'].dtype.categories.values,
-                                      title="Time")
-
-    fig_refs['time_lgd'] = add_legend(axd['rep_lgd'], 
-                                      rep_colors, 
-                                      data.all_data.obs['Experiment'].dtype.categories.values,
-                                      title="Rep.")
-
-    for ax_id, label in panel_labels.items():
-        axd[ax_id].set_title(label, loc='left', weight='bold')
 
     if save:
         fig.savefig(FIGURE_4_FILE_NAME + ".png", facecolor='white', bbox_inches='tight')

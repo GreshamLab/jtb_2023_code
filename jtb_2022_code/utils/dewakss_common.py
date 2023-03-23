@@ -6,14 +6,16 @@ from joblib import parallel_backend as _parallel_backend
 
 from ..figure_constants import *
 
-def run_dewakss(data, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS):
+def run_dewakss(data, n_pcs=N_PCS, n_neighbors=N_NEIGHBORS, normalize=True):
     
     if 'denoised' not in data.uns:
         
         print("\tNormalizing Data")
         data.X = data.X.astype(float)
-        _sc.pp.normalize_per_cell(data)
-        _sc.pp.log1p(data)
+        
+        if normalize:
+            _sc.pp.normalize_per_cell(data)
+            _sc.pp.log1p(data)
 
         if "X_pca" in data.obsm and data.obsm["X_pca"].shape[1] >= max(n_pcs):
             pass

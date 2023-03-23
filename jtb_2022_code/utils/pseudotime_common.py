@@ -15,10 +15,11 @@ from ..figure_constants import *
 PCA_PT = "pca_pt"
 
 
-def do_pca_pt(data, pt_key=PCA_PT, pca_key='X_pca'):
+def get_pca_pt(data, pca_key='X_pca'):
     # PCA-based pseudotime
     if pca_key != 'X_pca' and pca_key not in data.obsm:
         raise ValueError(f"PCA key {pca_key} is not in data")
+        
     elif pca_key == 'X_pca' and pca_key not in data.obsm:
         _sc.pp.pca(data, n_comps=1)
         pca_pt = interval_normalize(data.obsm['X_pca'])
@@ -31,9 +32,7 @@ def do_pca_pt(data, pt_key=PCA_PT, pca_key='X_pca'):
     if spearman_rho_pools(data.obs['Pool'], pca_pt) < 0:
         pca_pt = _np.abs(1 - pca_pt)
         
-    data.obs[pt_key] = pca_pt
-        
-    return data
+    return pca_pt
 
 
 def do_pca_on_groups(data, npcs, layer="counts"):
@@ -67,7 +66,6 @@ def spearman_rho_pools(pool_vector, pt_vector, average_1_2_pools=True, ignore_na
         pool_vector = pool_vector.copy()
         pool_vector[pool_vector == 2] = 1
 
-    
     return _spearmanr(pool_vector, pt_vector)[0]
 
 
@@ -95,76 +93,13 @@ def spearman_rho_grid(data, obsm_key, uns_key, average_1_2_pools=True):
     
     return data
 
-"""
-def calculate_times_velocities(data,
-                               transform_expr=None,
-                                   pt_obs_key=PCA_PT, 
-                               time_obs_key=None, 
-                               layer="X", 
-                               distance_key="distances", 
-                               nn=max(N_NEIGHBORS), 
-                               force=False):
-    
-    if time_obs_key is None:
-        time_obs_key = "time_" + pt_obs_key
-    
-    layer_out = layer + "_velocity"
-    
-    if time_obs_key not in data.obs or force:
-        rho = spearman_rho_pools(data.obs['Pool'], data.obs[pt_obs_key])
-        do_time_assign_by_pool(data, pt_obs_key=pt_obs_key, time_obs_key=time_obs_key, force=force)
-    
-    if layer_out not in data.layers or force:
-        lref = data.X if layer == "X" else data.layers[layer]
-        lref = transform_expr(lref) if transform_expr is not None else lref
+def add_time_rho(data_obj):
+    data.all_data.uns['rho']['time'] = 0.
+    data.all_data.uns['denoised_rho']['time'] = 0.
+
+    for k in data.expts:
+        expt_ref = data.expt_data[k]
+        data.all_data.uns['rho'].loc[k, 'time'] = spearman_rho_pools(expt_ref.obs['Pool'], expt_ref.obs['program_rapa_time'])
+        data.all_data.uns['denoised_rho'].loc[k, 'time'] = spearman_rho_pools(expt_ref.obs['Pool'], expt_ref.obs['program_rapa_time_denoised'])
         
-        data.layers[layer_out] = calc_velocity(lref, 
-                                               data.obs[time_obs_key].values, 
-                                               data.obsp[distance_key],
-                                               nn, wrap_time=None)
-    
     return data
-
-
-def do_time_assign_by_pool(adata, pt_obs_key='pca_pt', time_obs_key=None, quantiles=(0.05, 0.95), 
-                           force=False, max_outlier=10):
-    
-    if time_obs_key is None:
-        time_obs_key = "time_" + pt_obs_key
-        
-    if time_obs_key in adata.obs and not force:
-        return adata￼
-    
-    pseudotime = adata.obs[pt_obs_key].values
-    labels = adata.obs['Pool'].values
-    
-    if spearman_rho_pools(labels, pseudotime) < 0:
-        pseudotime = _np.abs(pseudotime - _np.max(pseudotime))
-        
-    real_time, outlier_mask = assign_times_from_pseudotime_sliding(pseudotime, 
-                                                                   labels, 
-                                                                   list(range(1, 9)), 
-                                                                   POOL_TIMES, 
-                                                                   edges=quantiles,
-                                                                   mask_outliers=True,
-                                                                   trim_outliers=False)
-    
-    adata.obs[time_obs_key] = real_time
-    
-    if max_outlier is not None:
-    
-        for g, start_time, stop_time in POOL_TIMES:
-
-            _g_outlier = real_time > (stop_time + max_outlier)
-            _g_outlier |= real_time < (start_time - max_outlier)
-            _g_outlier &= outlier_mask
-            _g_outlier &= adata.obs['Pool'] == g
-            
-            adata.obs.loc[_g_outlier, time_obs_key] = _np.nan
-            
-    else:
-        
-        adata.obs.loc[outlier_mask, time_obs_key] = _np.nan
-    
-    return adata
-"""

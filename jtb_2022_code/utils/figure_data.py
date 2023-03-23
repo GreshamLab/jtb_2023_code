@@ -16,7 +16,7 @@ from .projection_common import *
 from .dewakss_common import run_dewakss
 from .decay_common import calc_decays, calc_decay_windows, _calc_decay_windowed, _calc_decay
 from .velocity_common import calculate_velocities
-from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools
+from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools, get_pca_pt
 from .process_published_data import process_all_decay_links
 from .activity_common import get_decay_per_cell, calc_activity_expression, decay_window_to_cell_layer
 from sklearn.metrics import pairwise_distances
@@ -28,6 +28,9 @@ class FigureSingleCellData:
     _expt_keys = None
     
     _gene_names = None
+    
+    _pseudotime_rho = None
+    _max_pseudotime_rho = None
        
     expt_cats = [1, 2]
     gene_cats = ["WT", "fpr1"]   
@@ -64,10 +67,47 @@ class FigureSingleCellData:
                    ['X_umap' in v.obsm for k, v in self.expt_data.items()])
     
     @property
+    def pseudotime(self):
+        if 'pseudotime' not in self.all_data.obsm:
+            self.load_pseudotime()
+        
+        data = self.all_data.obsm['pseudotime'].copy()
+        data.columns = _pd.MultiIndex.from_frame(
+            self.all_data.uns['pseudotime_columns']
+        )
+        
+        return data
+    
+    @property
+    def pseudotime_rho(self):
+        
+        if self._pseudotime_rho is None:
+            self.calculate_pseudotime_rho()
+            
+        return self._pseudotime_rho.copy()
+    
+    @property
+    def max_pseudotime_rho(self):
+        
+        if self._max_pseudotime_rho is None:
+            self.calculate_max_pseudotime_rho()
+            
+        return self._max_pseudotime_rho.copy()
+    
+    @property
+    def optimal_pseudotime_rho(self):
+        
+        ptr = self.pseudotime_rho.loc[:, (slice(None), False, slice(None))]
+        ptr = ptr.T.loc[:, (slice(None), "WT")].reset_index().droplevel(1, axis=1)
+        ptr['mean_rho'] = ptr[[1, 2]].mean(axis=1)
+        _opt_idx = ptr[['method', 'mean_rho']].groupby(['method']).transform(max)['mean_rho'] == ptr['mean_rho']
+        return ptr[_opt_idx].set_index('method', drop=True)
+
+    @property
     def _all_adatas(self):
         return [self.all_data] + [v for k, v in self.expt_data.items()]
        
-    def __init__(self, start_from_scratch=False, memory_efficient=True, load_expts=True):
+    def __init__(self, start_from_scratch=False, load_expts=True):
         self._load(from_unprocessed=start_from_scratch, load_expts=load_expts)
            
     def do_projections(self):
@@ -107,8 +147,11 @@ class FigureSingleCellData:
         
         self._all_data = _ad.read(fn)
         
+        if VERBOSE and _first_load:
+            print(f"Initial loading and preprocessing of raw data {self._all_data.shape}")
+                  
         if _first_load:
-            self._first_load(self._all_data)
+            self._all_data = self._first_load(self._all_data)
         
         if load_expts:
             self._load_expts(force_extraction_from_all=from_unprocessed)
@@ -179,77 +222,101 @@ class FigureSingleCellData:
                     self.expt_data[k].write(v)
             
     
-    def load_pseudotime(self, files=PSEUDOTIME_FILES, do_rho=True):
-                
-        ### LOAD FLATFILES ###
-        for k, (fn, has_idx) in files.items():
-            pt_key = self._pseudotime_key(k[0], k[1])
-            if pt_key not in self.all_data.obsm or any(pt_key not in x.obsm for _, x in self.expt_data.items()):
-                loaded = _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
-                loaded.index = loaded.index.astype(str)
-                self.all_data.obsm[pt_key] = loaded
-
-                for (expt, gene), expt_v in self.expt_data.items():
-                    expt_idx = self.all_data.obs['Experiment'] == expt
-                    expt_idx &= self.all_data.obs['Gene'] == gene
-                    expt_v.obsm[pt_key] = self.all_data.obsm[pt_key].loc[expt_idx, :].copy()
-                    
-                if k[0] == 'palantir' and not k[1]:
-                    self.apply_inplace_to_everything(_fix_palantir, pt_key)
-
-        ### CALCULATE CORRELATIONS AGAINST THE TIME DATA ###
-        def _get_rho(adata, key):
-            return spearman_rho_pools(adata.obs['Pool'], adata.obs[key])
+    def load_pseudotime(self, files=PSEUDOTIME_FILES):
         
-        if do_rho:
-                    
-            if 'rho' not in self.all_data.uns:
-                self.all_data.uns['rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
+        # LOAD FLATFILES #
+        print("Loading pseudotime flatfiles")
+        loaded_data = [
+            _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
+            for k, (fn, has_idx) in PSEUDOTIME_FILES.items()
+        ]
 
-            if 'pca_pt' in self.expt_data[(1, "WT")].obs:
-                df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'pca_pt'), 
-                                   index=_pd.MultiIndex.from_tuples(self.expts),
-                                   columns = ['pca'])
-                self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], df), axis=1)
+        for i, k in enumerate(PSEUDOTIME_FILES.keys()):
 
+            loaded_data[i].index = loaded_data[i].index.astype(str)
+            loaded_data[i].columns = _pd.MultiIndex.from_tuples(
+                [(k[0], k[1], c) for c in loaded_data[i].columns],
+                names=("method", "denoised", "values")
+            )
 
-            if 'denoised_rho' not in self.all_data.uns:
-                self.all_data.uns['denoised_rho'] = _pd.DataFrame(index=_pd.MultiIndex.from_tuples(self.expts))
-
-            if 'denoised_pca_pt' in self.expt_data[(1, "WT")].obs:
-                df = _pd.DataFrame(self.apply_to_expts(_get_rho, 'denoised_pca_pt'), 
-                                   index=_pd.MultiIndex.from_tuples(self.expts),
-                                   columns = ['pca'])
-                self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
-
-            ### CALCULATE SPEARMAN RHO FOR EACH EXPERIMENT ###
-            for k, _ in files.items():
-                rho_key = k[0] + '_rho'
-                pt_key = self._pseudotime_key(k[0], k[1])
-
-                if rho_key not in self.all_data.uns and not k[1]:
-                    spearman_rho_grid(self, pt_key, rho_key)
-                    rhomax = _pd.DataFrame(_np.abs(self.all_data.uns[rho_key]).apply(_np.nanmax, axis=1))
-                    rhomax.columns = [k[0]]
-                    self.all_data.uns['rho'] = _pd.concat((self.all_data.uns['rho'], rhomax), axis=1)
-
-                if k[0] not in self.all_data.uns['denoised_rho'].columns and k[1]:
-                    df = _pd.DataFrame(self.apply_to_expts(calc_rhos, pt_key))
-                    df.columns = [k[0]]
-                    df.index = _pd.MultiIndex.from_tuples(self.expts)
-                    df = df.applymap(lambda x: x[1])
-                    self.all_data.uns['denoised_rho'] = _pd.concat((self.all_data.uns['denoised_rho'], df), axis=1)
-
-            self.all_data.uns['denoised_rho'] = _np.abs(self.all_data.uns['denoised_rho'])
-
-        ### CALCULATE TIME VALUES BASED ON PSEUDOTIME ###
+            if k[0] == 'palantir' and not k[1]:
+                loaded_data[i] = _select_palantir_dcs(loaded_data[i])
         
-        def _pt_to_obs(adata):
-            for m in ['dpt', 'cellrank', 'monocle', 'palantir']:
-                km = m + '_pt'
-                adata.obs[km] = adata.obsm[self._pseudotime_key(m, True)].copy()
+        print("Calculating PCA pseudotimes")
+        for i in range(2):
+                        
+            pca_pt = _pd.DataFrame(
+                _np.nan,
+                index=self.all_data.obs_names,
+                columns=_pd.MultiIndex.from_tuples([('pca', i == 1, 'pca')]),
+                dtype=float
+            )
+
+            for k in self.expts:
+                pca_pt.loc[self._all_data_expt_index(*k), :] = get_pca_pt(
+                    self.expt_data[k] if i == 0 else self.denoised_data(*k),
+                    pca_key="X_pca" if i == 0 else "denoised_pca"
+                ).reshape(-1, 1)
+
+            loaded_data.append(pca_pt)
+
+        loaded_data = _pd.concat(
+            loaded_data,
+            axis=1
+        )
         
-        self.apply_inplace_to_expts(_pt_to_obs)
+        # Store column names in a dataframe
+        self.all_data.uns['pseudotime_columns'] = _pd.DataFrame(
+            loaded_data.columns.to_flat_index().tolist()
+        )
+        
+        self.all_data.uns['pseudotime_columns'].index = self.all_data.uns['pseudotime_columns'].index.astype(str)
+        self.all_data.uns['pseudotime_columns'].columns = ("method", "denoised", "values")
+        
+        loaded_data.columns = _pd.Index(
+            list(range(len(loaded_data.columns)))
+        ).astype(str)
+        
+        self.all_data.obsm['pseudotime'] = loaded_data
+
+        self.save()
+        
+    def calculate_pseudotime_rho(self):
+        
+        print("Calculating spearman rho for pseudotimes")
+        
+        pt = self.pseudotime
+        rho = []
+        
+        for k in self.expts:
+            _idx = self._all_data_expt_index(*k)
+            df = _pd.DataFrame(
+                pt.loc[_idx, :].apply(
+                    lambda x: spearman_rho_pools(self.all_data.obs.loc[_idx, "Pool"], x),
+                    raw=True
+                )
+            ).T
+            df.index = _pd.MultiIndex.from_tuples([k], names=("Experiment", "Gene"))
+            rho.append(_np.abs(df))
+
+        self._pseudotime_rho = _pd.concat(rho)
+
+        
+    def calculate_max_pseudotime_rho(self):
+        
+        max_rho = self.pseudotime_rho.groupby(
+            axis=1, level=['method', 'denoised']
+        ).agg(_np.max)
+
+        max_rho[('time', False)] = 0.
+        max_rho[('time', True)] = 0.
+        
+        for k in self.expts:
+            expt_ref = self.expt_data[k]
+            max_rho.loc[k, ('time', False)] = _np.abs(spearman_rho_pools(expt_ref.obs['Pool'], expt_ref.obs['program_rapa_time']))
+            max_rho.loc[k, ('time', True)] = _np.abs(spearman_rho_pools(expt_ref.obs['Pool'], expt_ref.obs['program_rapa_time_denoised']))
+
+        self._max_pseudotime_rho = max_rho
         
     def get_pseudotime(method, denoised=False, expt=None):
         if expt is None:
@@ -287,6 +354,15 @@ class FigureSingleCellData:
         
         _velo_data = self.velocity_data(expt, gene)
         
+        if 'programs' not in _velo_data.uns:
+            self._transfer_programs(_velo_data)
+            _fn = RAPA_SINGLE_CELL_VELOCITY_BY_EXPT.format(e=expt, g=gene)
+            
+            if VERBOSE:
+                print(f"Writing Single Cell Decay Data to {_fn}")
+                
+            _velo_data.write(_fn)
+        
         if 'cell_cycle_decay' not in _velo_data.var.columns or recalculate:
             print("Calculating Biophysical Paramaters:")
             
@@ -300,7 +376,13 @@ class FigureSingleCellData:
                     force=recalculate
                 )
 
-                calc_decay_windows(_velo_data,
+                if g_key == 'cell_cycle':
+                    _vdata = _velo_data[_velo_data.obs['Pool'].obs['Pool'].isin([1, 2]), :]
+                else:
+                    _vdata = _velo_data
+                    
+                calc_decay_windows(
+                    _vdata,
                     g_key + "_velocity",
                     time_key,
                     output_key = g_key + "_window_decay",
@@ -329,9 +411,9 @@ class FigureSingleCellData:
         return _velo_data
     
     def decay_data_all(self, recalculate=False, reextract=False):
-        
+
         if recalculate or 'cell_cycle_decay' not in self.all_data.var.columns:
-        
+
             adata_list = [self.decay_data(1, "WT"), self.decay_data(2, "WT")]
 
             for g_key, time_key, tmin, tmax in [('cell_cycle', CC_TIME_COL, 0, 88), ('rapamycin', RAPA_TIME_COL, -10, 60)]:
@@ -419,13 +501,20 @@ class FigureSingleCellData:
         
         else:
             print(f"{_fn} not found. Generating denoised data:")
-            adata = _ad.AnnData(self.expt_data[(expt, gene)].layers['counts'].copy(),
-                                obs=self.expt_data[(expt, gene)].obs.copy(),
-                                var=self.expt_data[(expt, gene)].var.copy(),
-                                dtype=int)
+            adata = _ad.AnnData(
+                self.expt_data[(expt, gene)].layers['counts'].copy(),
+                obs=self.expt_data[(expt, gene)].obs.copy(),
+                var=self.expt_data[(expt, gene)].var.copy(),
+                dtype=int
+            )
             
             if 'noise2self_distance_graph' not in self.expt_data[(expt, gene)].obsp:
-                _ifv.global_graph(self.expt_data[(expt, gene)], verbose=True)
+                _ifv.global_graph(
+                    self.expt_data[(expt, gene)],
+                    neighbors=N_NEIGHBORS,
+                    npcs=N_PCS,
+                    verbose=True
+                )
                 
             adata.obsp['noise2self_distance_graph'] = self.expt_data[(expt, gene)].obsp['noise2self_distance_graph'].copy()
             run_dewakss(adata)            
@@ -451,6 +540,13 @@ class FigureSingleCellData:
         # Filter all-zero genes
         adata.raw = adata
         _sc.pp.filter_genes(adata, min_cells=10)
+        
+        _orf_idx = adata.var_names.str.startswith("Y")
+        _orf_idx |= adata.var_names.str.startswith("Q")
+        _orf_idx |= adata.var_names.str.endswith("MX")
+
+        print(f"Removing {adata.shape[1] - _orf_idx.sum()} non-coding")
+        adata = adata[:, _orf_idx].copy()
 
         # Copy counts and save basic count depth stats
         adata.layers['counts'] = adata.X.copy()
@@ -469,6 +565,8 @@ class FigureSingleCellData:
         adata = calc_other_cc_groups(adata)
         
         _add_broad_category(adata)
+        
+        return adata
         
     def gene_common_name(self, gene_symbol):
         
@@ -498,29 +596,29 @@ class FigureSingleCellData:
             self.all_data.uns['programs']['rapa_program'] = _rapa_program
             self.all_data.uns['programs']['cell_cycle_program'] = _cc_program
 
-            def _transfer_programs(adata):
-                adata.var['programs'] = self.all_data.var['programs'].reindex(adata.var_names)
-                adata.obs['Pool_Combined'] = adata.obs['Pool'].astype(str)
-                adata.obs.loc[adata.obs['Pool_Combined'] == '1', 'Pool_Combined'] = '12'
-                adata.obs.loc[adata.obs['Pool_Combined'] == '2', 'Pool_Combined'] = '12'
-
             self.apply_inplace_to_expts(
-                _transfer_programs
+                self._transfer_programs
             )
             
             self.apply_inplace_to_expts(
                 _ifv.global_graph,
+                neighbors=N_NEIGHBORS,
+                npcs=N_PCS,
                 verbose=True
             )
             
             self.process_times(recalculate=True)
             
     def process_times(self, recalculate=False):
+        
+        _rapa_program = self.all_data.uns['programs']['rapa_program']
+        _cc_program = self.all_data.uns['programs']['cell_cycle_program']
 
         if recalculate or 'program_0_time' not in self.all_data.obs.columns:
-
-            _rapa_program = self.all_data.uns['programs']['rapa_program']
-            _cc_program = self.all_data.uns['programs']['cell_cycle_program']
+           
+            self.apply_inplace_to_expts(
+                self._transfer_programs
+            )
 
             self.apply_inplace_to_expts(
                 _ifv.times.program_times,
@@ -532,7 +630,7 @@ class FigureSingleCellData:
                 verbose=True
             )
 
-            def _sort_out_times(adata):
+            def _sort_out_times(adata):                
                 adata.obs[RAPA_TIME_COL] = adata.obs[f'program_{_rapa_program}_time'].copy()
                 adata.obs[CC_TIME_COL] = adata.obs[f'program_{_cc_program}_time'].copy()                
 
@@ -543,12 +641,14 @@ class FigureSingleCellData:
             self.all_data.obs[f'program_{_rapa_program}_time'] = _np.nan
             self.all_data.obs[f'program_{_cc_program}_time'] = _np.nan
 
-            for i in range(1, 3):
-                _idx = self.all_data.obs["Gene"] == "WT"
-                _idx &= self.all_data.obs["Experiment"] == i
+            for k in self.expts:
+                if k[1] != "WT":
+                    continue
+                
+                _idx = self._all_data_expt_index(*k)
 
-                self.all_data.obs.loc[_idx, f'program_{_rapa_program}_time'] = self.expt_data[i, "WT"].obs[f'program_{_rapa_program}_time']
-                self.all_data.obs.loc[_idx, f'program_{_cc_program}_time'] = self.expt_data[i, "WT"].obs[f'program_{_cc_program}_time']
+                self.all_data.obs.loc[_idx, f'program_{_rapa_program}_time'] = self.expt_data[k].obs[f'program_{_rapa_program}_time']
+                self.all_data.obs.loc[_idx, f'program_{_cc_program}_time'] = self.expt_data[k].obs[f'program_{_cc_program}_time']
 
             # Assign the remaining genes
             self.all_data.var['programs'] = _ifv.assign_genes_to_programs(
@@ -559,6 +659,44 @@ class FigureSingleCellData:
                 n_bins = 20,
                 verbose = True
             )
+
+            self.save()
+            
+        if recalculate or f'{RAPA_TIME_COL}_denoised' not in self.all_data.obs.columns:
+               
+            self.all_data.obs[f'{RAPA_TIME_COL}_denoised'] = _np.nan
+            self.all_data.obs[f'{CC_TIME_COL}_denoised'] = _np.nan           
+
+            for k in self.expts:
+                _denoised = self.denoised_data(*k)
+
+                _n_comps = {
+                    self.all_data.uns['programs']['rapa_program']: 
+                    len(self.expt_data[k].uns[f"program_{self.all_data.uns['programs']['rapa_program']}_pca"]['variance']),
+                    self.all_data.uns['programs']['cell_cycle_program']: 
+                    len(self.expt_data[k].uns[f"program_{self.all_data.uns['programs']['cell_cycle_program']}_pca"]['variance']),
+                }
+
+                self._transfer_programs(_denoised)
+                _ifv.program_times(_denoised,
+                    {self.all_data.uns['programs']['rapa_program']: 'Pool_Combined',
+                     self.all_data.uns['programs']['cell_cycle_program']: 'CC'},
+                    {self.all_data.uns['programs']['rapa_program']: RAPA_TIME_ORDER,
+                     self.all_data.uns['programs']['cell_cycle_program']: CC_TIME_ORDER},
+                    layer='X',
+                    n_comps=_n_comps
+                )
+
+                self.expt_data[k].obs[f'{CC_TIME_COL}_denoised'] = _denoised.obs[f'program_{_cc_program}_time']
+                self.expt_data[k].obs[f'{RAPA_TIME_COL}_denoised'] = _denoised.obs[f'program_{_rapa_program}_time']
+                                                                                   
+                if k[1] != "WT":
+                    continue
+                else:
+                    _idx = self._all_data_expt_index(*k)
+
+                    self.all_data.obs.loc[_idx, f'{RAPA_TIME_COL}_denoised'] = self.expt_data[k].obs[f'{RAPA_TIME_COL}_denoised']
+                    self.all_data.obs.loc[_idx, f'{CC_TIME_COL}_denoised'] = self.expt_data[k].obs[f'{CC_TIME_COL}_denoised']
 
             self.save()
             
@@ -594,6 +732,25 @@ class FigureSingleCellData:
             del _dists
 
             self.save()
+            
+    def _all_data_expt_index(self, expt, gene):
+        _idx = self.all_data.obs['Experiment'] == expt
+        _idx &= self.all_data.obs['Gene'] == gene
+        return _idx
+
+
+    def _transfer_programs(self, adata):
+        adata.var['programs'] = self.all_data.var['programs'].reindex(adata.var_names)
+        adata.obs['Pool_Combined'] = adata.obs['Pool'].astype(str)
+        adata.obs.loc[adata.obs['Pool_Combined'] == '1', 'Pool_Combined'] = '12'
+        adata.obs.loc[adata.obs['Pool_Combined'] == '2', 'Pool_Combined'] = '12'
+        
+        adata.uns['programs'] = {
+            'rapa_program': self.all_data.uns['programs']['rapa_program'], 
+            'cell_cycle_program': self.all_data.uns['programs']['cell_cycle_program']
+        }
+        
+        return adata
 
 
 def _gene_metadata(adata):
@@ -627,8 +784,7 @@ def _call_cc(data):
         # Generate a proportion table for each of the cell cycle categories
         cc_prop = _np.zeros((data.shape[0], len(CC_COLS)), order="F")
         for i, cc in enumerate(CC_COLS):
-            cc_prop[:, i] = data.layers['counts'][:, data.var[cc].values].sum(axis=1).A1
-            cc_prop[:, i] /= data.obs['n_counts']
+            cc_prop[:, i] = data.layers['counts'][:, data.var[cc].values].sum(axis=1).A1 / data.obs['n_counts'].values
 
         # Z-score each of the columns of the table (within each category)
         cc_prop = _sp.stats.zscore(cc_prop, ddof=1)
@@ -646,9 +802,10 @@ def calc_group_props(data, cols=AGG_COLS):
         if VERBOSE:
             print(f"Calculating aggregate proportion {cols}")
         for i, ag in enumerate(cols):
-            ag_ratio = data.layers['counts'][:, data.var[ag].values].sum(axis=1).A1.astype(float)
-            ag_ratio /= data.obs['n_counts']
-            data.obs[ag] = ag_ratio
+            data.obs[ag] = data.layers['counts'][
+                :,
+                data.var[ag].values
+            ].sum(axis=1).A1.astype(float) / data.obs['n_counts'].values
             
     return data
 
@@ -682,11 +839,33 @@ def sum_for_pseudobulk(adata, by_cols):
     meta_bulk = []
     
     grouper = adata.obs.groupby(by_cols)
+    
     for groups, group_data in grouper:
+
         idx = adata.obs_names.isin(group_data.index)
-        group_bulk.append(_pd.DataFrame(_np.sum(adata.X[idx, :], axis=0).reshape(1, -1), 
-                                        columns=adata.var_names))
-        meta_bulk.append(_pd.DataFrame([groups], columns=by_cols))
+        _count_data = adata.layers['counts'][idx, :]
+        
+        try:
+            _count_data = _count_data.A
+        except AttributeError:
+            pass
+
+        group_bulk.append(
+            _pd.DataFrame(
+                _np.sum(
+                    _count_data,
+                    axis=0
+                ).reshape(1, -1), 
+                columns=adata.var_names
+            )
+        )
+
+        meta_bulk.append(
+            _pd.DataFrame(
+                [groups],
+                columns=by_cols
+            )
+        )
 
     group_bulk = _pd.concat(group_bulk)
     group_bulk.reset_index(drop=True, inplace=True)
@@ -697,17 +876,18 @@ def sum_for_pseudobulk(adata, by_cols):
     return group_bulk, meta_bulk
 
 ### SELECT 15 DCs FROM PALANTIR: ###
-def _dc_select(obsm_data, n_dcs=15):
-    col_split = list(map(lambda x: x.split("_"), obsm_data.columns))
+def _select_palantir_dcs(df, n_dcs=15):
+    col_split = list(map(lambda x: x.split("_"), df.columns.get_level_values(2)))
     keep_cols = [int(x[1]) == n_dcs for x in col_split]
-    obsm_data = obsm_data.loc[:, keep_cols].copy()
-    obsm_data.columns = [str(x[0]) + "_" + str(x[2]) 
-                         for x, y in zip(col_split, keep_cols) if y]
-    return obsm_data
-
-def _fix_palantir(adata, obsm_key):
-    nd = _dc_select(adata.obsm[obsm_key])
-    adata.obsm[obsm_key] = nd
+    keep_col_values = _pd.MultiIndex.from_tuples(
+        [
+            (df.columns[i][0], df.columns[i][1], str(x[0]) + "_" + str(x[2])) 
+            for i, (x, y) in enumerate(zip(col_split, keep_cols)) if y
+        ]
+    )
+    df = df.loc[:, keep_cols].copy()
+    df.columns = keep_col_values
+    return df
 
 def _add_broad_category(adata):
     adata.var['category'] = "NA"

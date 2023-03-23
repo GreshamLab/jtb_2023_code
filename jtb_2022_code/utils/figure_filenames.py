@@ -28,3 +28,7 @@ class FigureFile(_FilePathAdjustableRoot):
 class ScratchFile(_FilePathAdjustableRoot):
     
     _path_root = "/scratch/cj59/RAPA/"
+    
+class SchematicFile(_FilePathAdjustableRoot):
+    
+    _path_root = "./Schematic"

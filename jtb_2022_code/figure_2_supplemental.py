@@ -275,4 +275,121 @@ def figure_2_supplement_4_11_plot(data, cc_program='1', rapa_program='0', save=T
         figs.append(fig)
         
     return figs
+
+
+def figure_2_supplement_12_plot(data, save=True):
+    
+    # Reprocess rho data for heatmaps
+    # Select non-denoised
+    ptr = data.pseudotime_rho.loc[:, (slice(None), False, slice(None))]
+    
+    # Transpose, select WT, and drop indices into columns
+    ptr = ptr.T.loc[:, (slice(None), "WT")].reset_index().droplevel(1, axis=1)
+    
+    # Throw away PCA and pull string pcs_neighbors into integer columns
+    ptr = ptr.loc[ptr['method'] != 'pca', :]
+    ptr[['pcs', 'neighbors']] = ptr['values'].str.split("_", expand=True).astype(int)
+    
+    def _overlay_rect(method, i, ax):
+        _ideal_value = ptr.loc[
+            ptr.loc[ptr['method'] == method, i].idxmax(),
+            ['neighbors', 'pcs']
+        ]
+
+        y = np.where(_ideal_value['neighbors'] == N_NEIGHBORS)[0][0] - 0.5
+        x = np.where(_ideal_value['pcs'] == N_PCS)[0][0] - 0.5
         
+        return ax.add_patch(plt.Rectangle(
+            (x, y),
+            1,
+            1,
+            fill=False,
+            color='black',
+            linewidth=1
+        ))
+
+    panel_labels = {'dpt_rho_1': "A",
+                    'cellrank_rho_1': "B",
+                    'monocle_rho_1': "C",
+                    'palantir_rho_1': "D"}
+
+    panel_titles = {'dpt_rho_1': "Rep. 1",
+                    'dpt_rho_2': "Rep. 2"}
+
+    layout = [['dpt_rho_1', 'dpt_rho_2', '.'],
+              ['cellrank_rho_1', 'cellrank_rho_2', 'cbar'],
+              ['monocle_rho_1', 'monocle_rho_2', 'cbar'],
+              ['palantir_rho_1', 'palantir_rho_2', '.']]
+
+    fig_refs = {}
+
+    fig, axd = plt.subplot_mosaic(layout,
+                                  gridspec_kw=dict(width_ratios=[1, 1, 0.05], 
+                                                   height_ratios=[1, 1, 1, 1],
+                                                   wspace=0.1, hspace=0.1),
+                                  figsize=(6, 9), dpi=300)
+
+    for pt, pt_key in [('Diffusion PT', 'dpt'), 
+                       ('Cellrank PT', 'cellrank'),
+                       ('Monocle PT', 'monocle'),
+                       ('Palantir PT', 'palantir')]:
+
+        _bottom = pt_key == "palantir"
+        for i in range(1, 3):
+            _left = i == 1
+            
+            hm_data = ptr.loc[ptr['method'] == pt_key].pivot_table(
+                index='neighbors',
+                columns='pcs',
+                values=i
+            ).reindex(N_PCS, axis=1).reindex(np.arange(15, 115, 10), axis=0)
+            
+            ax_key = f"{pt_key}_rho_{i}"
+
+            fig_refs[ax_key] = axd[ax_key].imshow(
+                hm_data,
+                vmin=0.75,
+                vmax=1.0,
+                cmap='plasma',
+                aspect='auto',
+                interpolation='nearest',
+                alpha=0.75
+            )
+            
+            _overlay_rect(pt_key, i, axd[ax_key])
+
+            if _left:
+                axd[ax_key].set_yticks(range(hm_data.shape[0]), labels=hm_data.index)
+                axd[ax_key].set_ylabel(pt + "\n # Neighbors")
+            else:
+                axd[ax_key].set_yticks([], labels=[])
+
+            if _bottom:
+                axd[ax_key].set_xticks(range(hm_data.shape[1]), labels=hm_data.columns, rotation=90, ha="center")
+                axd[ax_key].set_xlabel("PCs") 
+            else:
+                axd[ax_key].set_xticks([], labels=[])
+
+            # https://stackoverflow.com/questions/11917547/how-to-annotate-heatmap-with-text-in-matplotlib
+            for y in range(hm_data.shape[0]):
+                for x in range(hm_data.shape[1]):
+                    n = hm_data.iloc[y, x]
+                    if np.isnan(n):
+                        continue
+                    axd[ax_key].text(x, y, '%.2f' % n, 
+                                     horizontalalignment='center', 
+                                     verticalalignment='center',
+                                     size=4
+                             )
+
+    for ax_key, title_str in panel_titles.items():
+        axd[ax_key].set_title(title_str)
+
+    for ax_id, label in panel_labels.items():
+        axd[ax_id].set_title(label, loc='left', weight='bold', x=-0.3, y=0.99)
+
+    fig_refs['cbar'] = fig.colorbar(fig_refs['dpt_rho_1'], cax=axd['cbar'], orientation="vertical",aspect=60)
+    fig_refs['cbar'].ax.set_title('ρ')
+
+    if save:
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_12.png", facecolor='white', bbox_inches='tight')

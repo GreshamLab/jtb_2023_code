@@ -160,7 +160,7 @@ def figure_1_supplement_1_plot(data, save=True):
 
     ### PANELS C-H ###
 
-    umap_adata = ad.AnnData(np.zeros((data.all_data.X.shape[0], 1)))
+    umap_adata = ad.AnnData(np.zeros((data.all_data.X.shape[0], 1)), dtype=data.all_data.X.dtype)
     umap_adata.obsm['X_umap'] = data.all_data.obsm['X_umap'].copy()
     umap_adata.obs = data.all_data.obs.copy()
 

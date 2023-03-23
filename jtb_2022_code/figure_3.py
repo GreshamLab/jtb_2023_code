@@ -6,306 +6,225 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.transforms import Bbox
 
 from jtb_2022_code.utils.figure_common import *
-from jtb_2022_code.utils.adata_common import *
-from jtb_2022_code.utils.pseudotime_common import do_pca_pt, spearman_rho_pools
+from jtb_2022_code.figure_constants import *
+from jtb_2022_code.utils.decay_common import _halflife
+
+from inferelator_velocity.utils.aggregation import aggregate_sliding_window_times
 
 import anndata as ad
 import numpy as np
 import pandas as pd
 import scanpy as sc
 
+REP_COLORS = ['darkslateblue', 'darkgoldenrod', 'black']
+
+
 def figure_3_plot(data, save=True):
-
-    panel_labels = {'pca_1': "A",
-                    'pca_pt_1': "B",
-                    'pca_d1': "C",
-                    'pca_pt_d1': "D",
-                    'method_hm': "E",
-                    'time_hist': "F"}
-
-    panel_titles = {'pca_1': "Rep. 1",
-                    'pca_2': "Rep. 2",
-                    'pca_pt_1': "Rep. 1",
-                    'pca_pt_2': "Rep. 2",
-                    'pca_d1': "",
-                    'pca_d2': "",
-                    'pca_pt_d1': "",
-                    'pca_pt_d2': "",}
-
-    layout = [['pca_1', 'pca_2', '.', 'pca_pt_1', 'pca_pt_2', 'pca_lgd'],
-              ['.', '.', '.', '.', '.', 'pca_lgd'],
-              ['pca_d1', 'pca_d2', '.', 'pca_pt_d1', 'pca_pt_d2', 'pca_lgd'],
-              ['.', '.', '.', '.', '.', 'pca_lgd'],
-              ['method_hm', 'time_hist', 'time_hist', 'time_hist', 'time_hist', 'pca_lgd']]
-
-    hm_labels = {'time': 'Time [min]', 
-                 'pca': 'PCA', 
-                 'dpt': 'DPT',
-                 'palantir': 'Palantir',
-                 'cellrank': 'CellRank', 
-                 'monocle': 'Monocle3'
-                 }
-
-    fig_refs = {}
-
-    fig, axd = plt.subplot_mosaic(layout,
-                                  gridspec_kw=dict(width_ratios=[1, 1, 0.02, 0.85, 0.85, 0.05], 
-                                                   height_ratios=[1, 0.05, 1, 0.2, 1],
-                                                   wspace=0.4, hspace=0.4), 
-                                  figsize=(7, 6), dpi=300)
-
-    axd["pca_lgd"].axis('off')
-
-
-
-
-    for i in range(1,3):
-        pca_key = "pca_" + str(i)
-        pca_d_key = "pca_d" + str(i)
-
-        pt_key = "pca_pt_" + str(i)
-        pt_d_key = "pca_pt_d" + str(i)
-
-        pca_data = data.expt_data[i, "WT"]
-        pca_d_data = get_clean_anndata(pca_data)
-        pca_d_data.obsm['X_pca'] = pca_data.obsm['DEWAKSS_pca'].copy()
-        pca_d_data.uns['pca'] = pca_data.uns['DEWAKSS_pca'].copy()
-
-
-        ### PANEL A/C ###
-        fig_refs[pca_key] = sc.pl.pca(pca_data, ax=axd[pca_key], 
-                                      color="Pool", palette=pool_palette(), 
-                                      show=False, alpha=0.25, size=2, legend_loc='none',
-                                      annotate_var_explained=True)
-        fig_refs[pca_d_key] = sc.pl.pca(pca_d_data, ax=axd[pca_d_key], 
-                                        color="Pool", palette=pool_palette(),
-                                        show=False, alpha=0.25, size=2, legend_loc='none',
-                                        annotate_var_explained=True)
-
-        ### PANEL B/D ###
-        fig_refs[pt_key] = _plt_pt_violins(pca_data, axd[pt_key], 'pca_pt', include_labels= i == 1)
-        fig_refs[pt_d_key] = _plt_pt_violins(pca_d_data, axd[pt_d_key], 'denoised_pca_pt', include_labels= i == 1)
-
-
-    fig_refs['hist_divider'] = make_axes_locatable(axd['time_hist'])
-    fig_refs['hist_leftpad'] = fig_refs['hist_divider'].append_axes('left', size='20%', pad=0.1)
-    fig_refs['hist_leftpad'].axis('off')
-    fig_refs['time_hist'] = plt_time_histogram(data, axd['time_hist'], ['dpt_pt', 'palantir_pt'], labels = ["DPT", "Palantir"])
-
-    hm_data = _make_method_heatmap_data(data).reindex(hm_labels.keys())
-    fig_refs['method_hm'] = axd['method_hm'].imshow(
-        hm_data, 
-        vmin=0.75, vmax=1.0,
-        cmap='plasma', aspect='auto', 
-        interpolation='nearest'
+    
+    fig_3_data = _get_fig3_data(data)
+    color_vec = to_pool_colors(fig_3_data.obs['Pool'])
+    
+    fig = _fig3_plot(
+        fig_3_data,
+        color_vec,
+        FIGURE_4_GENES,
+        gene_labels=[data.gene_common_name(g) for g in FIGURE_4_GENES],
+        time_key=f"program_{data.all_data.uns['programs']['rapa_program']}_time"
     )
-
-    axd['method_hm'].set_yticks(range(hm_data.shape[0]), labels=hm_data.index.map(lambda x: hm_labels[x]))
-    axd['method_hm'].set_xticks(range(hm_data.shape[1]), labels=[1, 2, 1, 2])
-    axd['method_hm'].xaxis.tick_top()
-    axd['method_hm'].yaxis.tick_right()
-    axd['method_hm'].axvline(1.5, 0, 1, linestyle='-', linewidth=1.0, c='black')
-    axd['method_hm'].annotate(f"Denoised", xy=(4, 0), xycoords='data', xytext=(0.45, 1.32), textcoords='axes fraction', annotation_clip=False)
-
-    divider = make_axes_locatable(axd['method_hm'])
-    axd['method_hm_cbar'] = divider.append_axes('bottom', size='10%', pad=0.02)
-    fig_refs['method_hm_cbar'] = fig.colorbar(fig_refs['method_hm'], cax=axd['method_hm_cbar'], orientation="horizontal", aspect=80)
-    fig_refs['method_hm_cbar'].set_label("Spearman ρ")
-
-    # https://stackoverflow.com/questions/11917547/how-to-annotate-heatmap-with-text-in-matplotlib
-    for y in range(hm_data.shape[0]):
-        for x in range(hm_data.shape[1]):
-            n = hm_data.iloc[y, x]
-            if np.isnan(n):
-                continue
-            axd['method_hm'].text(x, y, '%.2f' % n, 
-                                  horizontalalignment='center', 
-                                  verticalalignment='center', 
-                                  size=4)
-
-    fig_refs['pca_legend'] = add_legend(axd['pca_lgd'], 
-                                        pool_palette(), 
-                                        data.all_data.obs['Pool'].dtype.categories.values,
-                                        title = "Time",
-                                        fontsize = 'small')
-
-    for ax_id, label in panel_labels.items():
-        axd[ax_id].set_title(label, loc='left', weight='bold')
-
-    for ax_id, label in panel_titles.items():
-        axd[ax_id].set_title(label)
-
+    
     if save:
-        fig.savefig(FIGURE_3_FILE_NAME + ".png", facecolor="white", bbox_inches='tight') 
+        fig.savefig(FIGURE_3_FILE_NAME + ".png", facecolor="white")
 
+    return fig, fig_3_data
+
+
+def _fig3_plot(
+    fig_data,
+    color_data,
+    genes,
+    gene_labels=None,
+    time_key='program_0_time'
+):
+    
+    fig_refs = {}
+    fig = plt.figure(figsize=(4.5, 5), dpi=MAIN_FIGURE_DPI)
+
+    _left_x = 0.05
+    _height = 0.27
+    _width = 0.3
+    _x_right = 0.6
+
+    axd = {
+        'counts_1': fig.add_axes([0.175, 0.68, _width, _height]),
+        'velocity_1': fig.add_axes([0.175, 0.38, _width, _height]),
+        'decay_1': fig.add_axes([0.175, 0.08, _width, _height]),
+        'counts_2': fig.add_axes([_x_right, 0.68, _width, _height]),
+        'velocity_2': fig.add_axes([_x_right, 0.38, _width, _height]),
+        'decay_2': fig.add_axes([_x_right, 0.08, _width, _height]),
+        'legend': fig.add_axes([0.9, 0.38, 0.1, 0.57]),
+        'elegend': fig.add_axes([0.9, 0.08, 0.1, _height])
+    }
+
+    if gene_labels is None:
+        gene_labels = genes
+    
+    for i, g in enumerate(genes):
+
+        rgen = np.random.default_rng(441)
+        overplot_shuffle = np.arange(fig_data.shape[0])
+        rgen.shuffle(overplot_shuffle)
+
+        fig_refs[f'counts{i+1}'] = axd[f'counts_{i+1}'].scatter(
+            x=fig_data.obs[time_key][overplot_shuffle], 
+            y=fig_data.layers['denoised'][overplot_shuffle, i],
+            c=color_data[overplot_shuffle],
+            alpha=0.2, 
+            s=1
+        )
+
+        median_counts, _window_centers = aggregate_sliding_window_times(
+            fig_data.layers['denoised'][:, i].reshape(-1, 1),
+            fig_data.obs[time_key],
+            centers=np.linspace(-10 + 0.5, 65 - 0.5, 75),
+            width=1.
+        )
+
+        axd[f'counts_{i+1}'].plot(
+            _window_centers, 
+            median_counts,
+            c='black',
+            alpha=0.75,
+            linewidth=1.0
+        )
+
+        axd[f'counts_{i+1}'].set_xlim(-10, 65)
+        axd[f'counts_{i+1}'].set_xticks([0, 30, 60], [])
+        axd[f'counts_{i+1}'].set_ylim(0, np.quantile(fig_data.layers['denoised'][:, i], 0.995))
+        axd[f'counts_{i+1}'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black')
+        axd[f'counts_{i+1}'].tick_params(labelsize=8)
+        
+        axd[f'counts_{i+1}'].set_title(
+            gene_labels[i], 
+            size=8,
+            fontdict={'fontweight': 'bold', 'fontstyle': 'italic'}
+        )
+
+        fig_refs[f'velocity_{i+1}'] = axd[f'velocity_{i+1}'].scatter(
+            x=fig_data.obs[time_key][overplot_shuffle], 
+            y=fig_data.layers['velocity'][overplot_shuffle, i],
+            c=color_data[overplot_shuffle],
+            alpha=0.2, 
+            s=1
+        )
+
+        median_counts, _window_centers = aggregate_sliding_window_times(
+            fig_data.layers['velocity'][:, i].reshape(-1, 1),
+            fig_data.obs[time_key],
+            centers=np.linspace(-10 + 0.5, 65 - 0.5, 75),
+            width=1.
+        )
+
+        axd[f'velocity_{i+1}'].plot(
+            _window_centers, 
+            median_counts,
+            c='black',
+            alpha=0.75,
+            linewidth=1.0
+        )
+
+        velocity_axes(axd[f'velocity_{i+1}'])
+        axd[f'velocity_{i+1}'].set_xlim(-10, 65)
+        axd[f'velocity_{i+1}'].set_xticks([0, 30, 60], [])
+        axd[f'velocity_{i+1}'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black')
+        _ylim = np.abs(np.quantile(fig_data.layers['velocity'][:, i], [0.001, 0.999])).max()
+        axd[f'velocity_{i+1}'].set_ylim(-1 * _ylim, _ylim)
+        axd[f'velocity_{i+1}'].tick_params(labelsize=8)
+
+        for ic, i_decays in zip(
+            REP_COLORS,
+            [
+                fig_data.varm[f'decay_1'][i, :],
+                fig_data.varm[f'decay_2'][i, :],
+                fig_data.varm[f'decay'][i, :]
+            ]
+        ):
+            axd[f'decay_{i+1}'].plot(
+                fig_data.uns['window_times'], 
+                _halflife(i_decays),
+                marker=".", 
+                linestyle='-', 
+                linewidth=1.0, 
+                markersize=2 if ic == 'black' else 1, 
+                c=ic,
+                alpha=1 if ic == 'black' else 0.66
+            )
+
+        axd[f'decay_{i+1}'].set_xlim(-10, 65)
+        axd[f'decay_{i+1}'].set_xticks([0, 30, 60], [0, 30, 60], size=8)
+        axd[f'decay_{i+1}'].set_xlabel("Time (minutes)", size=8)
+        axd[f'decay_{i+1}'].set_xlim(-10, 65)
+        axd[f'decay_{i+1}'].set_ylim(0, 50)
+        axd[f'decay_{i+1}'].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black')
+        axd[f'decay_{i+1}'].tick_params(labelsize=8)
+
+    axd[f'counts_1'].set_ylabel(
+        "RNA Expression\n(Counts)", size=8
+    )
+    axd[f'velocity_1'].set_ylabel(
+        "RNA Velocity\n(Counts/minute)", size=8
+    )
+    axd[f'decay_1'].set_ylabel(
+        "RNA Half-life\n(minutes)", size=8
+    )
+    axd[f'counts_1'].set_title("A", loc='left', x=-0.4, y=0.9, weight='bold')
+    axd[f'velocity_1'].set_title("B", loc='left', x=-0.4, y=0.9, weight='bold')
+    axd[f'decay_1'].set_title("C", loc='left', x=-0.4, y=0.9, weight='bold')
+
+    axd['legend'].imshow(plt.imread(FIG_RAPA_LEGEND_VERTICAL_FILE_NAME), aspect='equal')
+    axd['legend'].axis('off')
+
+    axd['elegend'].imshow(plt.imread(FIG_EXPT_LEGEND_VERTICAL_FILE_NAME), aspect='equal')
+    axd['elegend'].axis('off')
+        
     return fig
 
-def _minmax_time(adata, key='time_pca_pt'):
-    return adata.obs[key].min(), adata.obs[key].max()
 
-
-def _get_pt_hist(data_df, bins=80, key='time_pca_pt'):
-    cuts = np.arange(bins + 1) / bins
-    return [np.bincount(pd.cut(data_df.loc[data_df['Pool'] == x, key], 
-                               cuts, labels=np.arange(bins)).dropna(),
-                        minlength=bins) for x in range(1, 9)]
-
-
-def _make_method_heatmap_data(pdata):
-    raw = pdata.all_data.uns['rho'].loc[(slice(None), "WT"), :].T
-    raw.columns = pd.MultiIndex.from_tuples([(1, "raw"), (2, "raw")])
+def _get_fig3_data(data_obj, genes=None):
     
-    denoised = pdata.all_data.uns['denoised_rho'].loc[(slice(None), "WT"), :].T.reindex(raw.index)
-    denoised.columns = pd.MultiIndex.from_tuples([(1, "denoised"), (2, "denoised")])
-    
-    return pd.concat((raw, denoised), axis=1)
+    if genes is None:
+        genes = FIGURE_4_GENES
 
+    _var_idx = data_obj.all_data.var_names.get_indexer(genes)
 
-def _plt_pt_violins(pdata, ax, pt_key, include_labels=True):
-    pca_pt_data = {k: v[pt_key] for k, v in pdata.obs[[pt_key, 'Pool']].groupby("Pool")}
-    ref = ax.violinplot([pca_pt_data[j] for j in range(1,9)], showmeans=False, showmedians=True, showextrema=False)
-    ax.set_xticks(np.arange(8) + 1, labels=np.arange(8) + 1)
-    ax.set_yticks([0.0, 0.5, 1.0], labels=[0.0, 0.5, 1.0] if include_labels else ['', '', ''])
+    fig3_data = ad.AnnData(
+        data_obj.all_data.layers['counts'][:, _var_idx],
+        obs = data_obj.all_data.obs[['Pool', 'Experiment', 'Gene', 'program_0_time', 'program_1_time']],
+        dtype=np.float32
+    )
+
+    fig3_data.var_names=FIGURE_4_GENES
     
-    if include_labels:
-        ax.set_ylabel("PCA1 PT")
-    
-    rho = spearman_rho_pools(pdata.obs['Pool'], pdata.obs[pt_key])
-    ax.annotate("ρ = " + f"{rho:.2f}", xy=(5, 0.2),  xycoords='data', xytext=(0.25, 0.05), textcoords='axes fraction')
-    
-    for part, c in zip(ref['bodies'], pool_palette()):
-        part.set_facecolor(c)
-        part.set_edgecolor('black')
+    fig3_data.uns['window_times'] = data_obj.all_data.uns['rapamycin_window_decay']['times']
+
+    fig3_data.layers['velocity'] = np.full(fig3_data.X.shape, np.nan, dtype=np.float32)
+    fig3_data.layers['denoised'] = np.full(fig3_data.X.shape, np.nan, dtype=np.float32)
+    fig3_data.varm['decay'] = data_obj.all_data.varm['rapamycin_window_decay'][_var_idx, :]
+
+    for k in data_obj.expts:
+
+        _idx = data_obj._all_data_expt_index(*k)
+
+        _vdata = data_obj.decay_data(*k)
         
-    return ref
-
-def plt_time_histogram(data_obj, ax, keys, bins=80, labels=None):
-    
-    if labels is None:
-        labels = keys
-    
-    hist_limit, fref = [], []
-    hist_labels = np.arange(bins)
-    
-    data = pd.concat([data_obj.expt_data[(i, "WT")].obs.loc[:, ["Pool"] + keys] for i in range(1, 3)])
-def _minmax_time(adata, key='time_pca_pt'):
-    return adata.obs[key].min(), adata.obs[key].max()
-
-
-def _get_pt_hist(data_df, bins=80, key='time_pca_pt'):
-    cuts = np.arange(bins + 1) / bins
-    return [np.bincount(pd.cut(data_df.loc[data_df['Pool'] == x, key], 
-                               cuts, labels=np.arange(bins)).dropna(),
-                        minlength=bins) for x in range(1, 9)]
-
-
-def _make_method_heatmap_data(pdata):
-    raw = pdata.all_data.uns['rho'].loc[(slice(None), "WT"), :].T
-    raw.columns = pd.MultiIndex.from_tuples([(1, "raw"), (2, "raw")])
-    
-    denoised = pdata.all_data.uns['denoised_rho'].loc[(slice(None), "WT"), :].T.reindex(raw.index)
-    denoised.columns = pd.MultiIndex.from_tuples([(1, "denoised"), (2, "denoised")])
-    
-    return pd.concat((raw, denoised), axis=1)
-
-
-def _plt_pt_violins(pdata, ax, pt_key, include_labels=True):
-    pca_pt_data = {k: v[pt_key] for k, v in pdata.obs[[pt_key, 'Pool']].groupby("Pool")}
-    ref = ax.violinplot([pca_pt_data[j] for j in range(1,9)], showmeans=False, showmedians=True, showextrema=False)
-    ax.set_xticks(np.arange(8) + 1, labels=np.arange(8) + 1)
-    ax.set_yticks([0.0, 0.5, 1.0], labels=[0.0, 0.5, 1.0] if include_labels else ['', '', ''])
-    
-    if include_labels:
-        ax.set_ylabel("PCA1 PT")
-    
-    rho = spearman_rho_pools(pdata.obs['Pool'], pdata.obs[pt_key])
-    ax.annotate("ρ = " + f"{rho:.2f}", xy=(5, 0.2),  xycoords='data', xytext=(0.25, 0.05), textcoords='axes fraction')
-    
-    for part, c in zip(ref['bodies'], pool_palette()):
-        part.set_facecolor(c)
-        part.set_edgecolor('black')
+        fig3_data.layers['velocity'][_idx, :] = _vdata.layers[RAPA_VELO_LAYER][:, _var_idx]
         
-    return ref
+        if k[1] == "WT":
+            fig3_data.varm[f'decay_{k[0]}'] =  _vdata.varm['rapamycin_window_decay'][_var_idx, :]
+       
+        del _vdata
 
-def plt_time_histogram(data_obj, ax, keys, bins=80, labels=None):
+        fig3_data.layers['denoised'][_idx, :] = data_obj.denoised_data(*k).X[:, _var_idx]
+
+    fig3_data = fig3_data[fig3_data.obs['Gene'] == "WT", :].copy()
     
-    if labels is None:
-        labels = keys
-    
-    hist_limit, fref = [], []
-    hist_labels = np.arange(bins)
-    
-    data = pd.concat([data_obj.expt_data[(i, "WT")].obs.loc[:, ["Pool"] + keys] for i in range(1, 3)])
-
-    for i, k in enumerate(keys):
-        
-        bottom_line = None
-        for j, hist_data in enumerate(_get_pt_hist(data, bins=bins, key=k)):
-            
-            bottom_line = np.zeros_like(hist_data) if bottom_line is None else bottom_line
-            
-            # Flip across the X axis for the second expt
-            if i == 1:
-                hist_data *= -1
-                                
-            fref.append(ax.bar(hist_labels, 
-                               hist_data, 
-                               bottom=bottom_line, 
-                               width=0.5, 
-                               label=i, color=pool_palette()[j]))
-                        
-            bottom_line = bottom_line + hist_data
-            
-            hist_limit.append(np.max(np.abs(bottom_line)))
-
-    hist_limit = max(hist_limit)
-    ax.set_xticks(np.arange(11) * int(bins / 10))
-    ax.set_xticklabels(np.arange(11) / 10, rotation=90)
-    ax.set_yticks([-5000, 0, 5000], labels=[5000, 0, 5000])
-    ax.set_ylim(-1 * hist_limit, hist_limit)
-    ax.set_ylabel("# Cells")
-    ax.yaxis.tick_right()
-    ax.yaxis.set_label_position("right")
-    ax.set_xlabel("Pseudotime")
-    ax.annotate(f"{labels[0]}", xy=(80, 500),  xycoords='data', xytext=(0.05, 0.88), textcoords='axes fraction')
-    ax.annotate(f"{labels[1]}", xy=(80, -500),  xycoords='data', xytext=(0.05, 0.025), textcoords='axes fraction')
-    ax.axhline(0, 0, 1, linestyle='-', linewidth=1.0, c='black')
-    ax.set_xlim(0, bins)
-                        
-    return fref
-    for i, k in enumerate(keys):
-        
-        bottom_line = None
-        for j, hist_data in enumerate(_get_pt_hist(data, bins=bins, key=k)):
-            
-            bottom_line = np.zeros_like(hist_data) if bottom_line is None else bottom_line
-            
-            # Flip across the X axis for the second expt
-            if i == 1:
-                hist_data *= -1
-                                
-            fref.append(ax.bar(hist_labels, 
-                               hist_data, 
-                               bottom=bottom_line, 
-                               width=0.5, 
-                               label=i, color=pool_palette()[j]))
-                        
-            bottom_line = bottom_line + hist_data
-            
-            hist_limit.append(np.max(np.abs(bottom_line)))
-
-    hist_limit = max(hist_limit)
-    ax.set_xticks(np.arange(11) * int(bins / 10))
-    ax.set_xticklabels(np.arange(11) / 10, rotation=90)
-    ax.set_yticks([-5000, 0, 5000], labels=[5000, 0, 5000])
-    ax.set_ylim(-1 * hist_limit, hist_limit)
-    ax.set_ylabel("# Cells")
-    ax.yaxis.tick_right()
-    ax.yaxis.set_label_position("right")
-    ax.set_xlabel("Pseudotime")
-    ax.annotate(f"{labels[0]}", xy=(80, 500),  xycoords='data', xytext=(0.05, 0.88), textcoords='axes fraction')
-    ax.annotate(f"{labels[1]}", xy=(80, -500),  xycoords='data', xytext=(0.05, 0.025), textcoords='axes fraction')
-    ax.axhline(0, 0, 1, linestyle='-', linewidth=1.0, c='black')
-    ax.set_xlim(0, bins)
-                        
-    return fref
+    return fig3_data
