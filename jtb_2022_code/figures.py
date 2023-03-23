@@ -59,6 +59,12 @@ def figures():
     )
     figure_2_supplement_12_plot(data)
     
+    for k in data.expts:
+        data.decay_data(*k)
+        gc.collect()
+
+    data.decay_data_all(recalculate)
+    
     _, fig3_data = figure_3_plot(data)
     
     figure_3_supplement_1_plot(data)
