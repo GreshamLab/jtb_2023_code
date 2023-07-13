@@ -32,14 +32,13 @@ class OldElifeData:
         
         print(f"Loading and processing {ELIFE_SINGLE_CELL_FILE}")
         
-        df = pd.read_csv(ELIFE_SINGLE_CELL_FILE, sep="\t")
-        
-        obs_cols = df.columns[[d.kind == 'O' for d in df.dtypes]]
-        obs_data = df[obs_cols]
-        
-        df = df.drop(obs_cols, axis=1)
+        df = ad.read(ELIFE_SINGLE_CELL_FILE)
+
+        obs_data = df.obs.copy()
+        df = df.to_df()
         
         if align_adata is not None:
+            
             df = df.reindex(
                 align_adata.var_names,
                 axis=1
@@ -55,7 +54,9 @@ class OldElifeData:
             dtype=np.float32
         )
         
-        self.data.layers['counts'] = scipy.sparse.csr_matrix(self.data.X.astype(np.int32))
+        self.data.layers['counts'] = scipy.sparse.csr_matrix(
+            self.data.X.astype(np.int32)
+        )
         
         if align_adata is not None and 'programs' in align_adata.var:
             self.data.var['programs'] = align_adata.var['programs']
@@ -176,9 +177,9 @@ class OldElifeData:
                 columns=self.data.var_names
             )
             
-            self.pseudobulk[['Genotype', 'Condition']] = self.data.obs[['Genotype', 'Condition']]
+            self.pseudobulk[['Genotype_Individual', 'Condition']] = self.data.obs[['Genotype_Individual', 'Condition']]
             self.pseudobulk = self.pseudobulk.groupby(
-                ['Genotype', 'Condition']
+                ['Genotype_Individual', 'Condition']
             ).agg('sum')
             
             meta_df = self.pseudobulk.index.to_frame().reset_index(drop=True)
@@ -187,7 +188,7 @@ class OldElifeData:
             self.pseudobulk = ad.AnnData(self.pseudobulk, dtype=np.int32)
             
             self.pseudobulk.obs = meta_df
-            self.pseudobulk.obs[['Genotype_Group', 'Replicate']] = meta_df['Genotype'].str.split("_", expand=True)
+            self.pseudobulk.obs[['Genotype_Group', 'Replicate']] = meta_df['Genotype_Individual'].str.split("_", expand=True)
             self.pseudobulk.obs['n_counts'] = self.pseudobulk.X.sum(axis=1).astype(int)
             
         return self.pseudobulk[self._get_index(genotype, condition, adata=self.pseudobulk), :].copy()

@@ -16,6 +16,11 @@ def calc_decays(
         return adata
     
     lref = adata.X if layer == "X" else adata.layers[layer]
+    
+    try:
+        lref = lref.A
+    except AttributeError:
+        pass
 
     decays, decays_se, alphas = _calc_decay(lref, 
                                             adata.layers[velocity_key], 
@@ -55,6 +60,11 @@ def calc_decay_windows(
     
     lref = adata.X if layer == "X" else adata.layers[layer]
     
+    try:
+        lref = lref.A
+    except AttributeError:
+        pass
+    
     decays, decays_se, a, t_c = _calc_decay_windowed(
         lref, 
         adata.layers[velocity_key], 
@@ -66,10 +76,13 @@ def calc_decay_windows(
         bootstrap=bootstrap
     )
     
-    adata.uns[output_key] = {'params': {'include_alpha': include_alpha, 
-                                        'decay_quantiles': list(decay_quantiles),
-                                        'bootstrap': bootstrap},
-                             'times': t_c}
+    adata.uns[output_key] = {
+        'params': {
+            'include_alpha': include_alpha, 
+            'decay_quantiles': list(decay_quantiles),
+            'bootstrap': bootstrap},
+        'times': t_c
+    }
 
     adata.varm[output_key] = np.array(decays).T
     adata.varm[output_key + "_se"] = np.array(decays_se).T
@@ -91,24 +104,17 @@ def _calc_decay_windowed(
     decay_quantiles=(0.0, 0.05), 
     bootstrap=True,
     t_min=0,
-    t_max=80,
-    time_wrap=None
+    t_max=80
 ):
-    
-    if time_wrap is not None:
-        times = times.copy()
-        times[times < 0] = times[times < 0] + time_wrap
-        times[times > time_wrap] = times[times > time_wrap] - time_wrap
-
-    
+       
     return decay.calc_decay_sliding_windows(
         expr, 
         velo, 
         times,
         include_alpha=include_alpha, 
         decay_quantiles=decay_quantiles,
-        centers=np.linspace(t_min + 1, t_max - 1, int(t_max - t_min) - 1),
-        width=2.,
+        centers=np.linspace(t_min + 0.5, t_max - 0.5, int(t_max - t_min)),
+        width=1.,
         bootstrap_estimates=bootstrap
     )    
     

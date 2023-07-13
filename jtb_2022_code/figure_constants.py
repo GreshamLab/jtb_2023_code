@@ -23,7 +23,7 @@ RAPA_SINGLE_CELL_EXPR_PROCESSED = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS.h5a
 RAPA_SINGLE_CELL_VELOCITY = str(ScratchFile("2021_RAPA_VELOCITY_FIGS.h5ad"))
 RAPA_SINGLE_CELL_DENOISED = str(ScratchFile("2021_RAPA_DENOISED_FIGS.h5ad"))
 
-ELIFE_SINGLE_CELL_FILE = "https://cdn.elifesciences.org/articles/51254/elife-51254-code2-v3.tsv.gz"
+ELIFE_SINGLE_CELL_FILE = str(ScratchFile("ELIFE_2020_SINGLE_CELL.h5ad"))
 ELIFE_SINGLE_CELL_FILE_PROCESSED = str(ScratchFile("2018_ELIFE_STATIC.h5ad"))
 
 # For formatting (needs {e} and {g})
@@ -32,11 +32,15 @@ RAPA_SINGLE_CELL_VELOCITY_BY_EXPT = str(ScratchFile("2021_RAPA_VELOCITY_FIGS_{e}
 RAPA_SINGLE_CELL_DENOISED_BY_EXPT = str(ScratchFile("2021_RAPA_DENOISED_FIGS_{e}_{g}.h5ad"))
 
 # Inferelator files
-INFERELATOR_DATA_FILE = str(ScratchFile("2021_RAPA_INFERELATOR.h5ad"))
-INFERELATOR_PRIORS_FILE = str(ScratchFile("YEASTRACT_20190713_BOTH.tsv.gz"))
+INFERELATOR_DATA_FILE = str(ScratchFile("2021_INFERELATOR_DATA.h5ad"))
+INFERELATOR_PRIORS_FILE = str(DataFile("JOINT_PRIOR_20230701.tsv.gz"))
 INFERELATOR_TF_NAMES_FILE = str(ScratchFile("tf_names_yeastract.txt"))
 INFERELATOR_GOLD_STANDARD_FILE = str(ScratchFile("tf_names_yeastract.txt"))
 INFERELATOR_RESULTS_FILE = str(DataFile("2021_RAPA_Inferelator_Results.tsv"))
+
+# Model files
+SUPIRFACTOR_COUNT_MODEL = str(ModelFile("COUNT_DROPOUT_RNN_MODEL.h5"))
+SUPIRFACTOR_VELOCITY_STATIC_MODEL = str(ModelFile("VELOCITY_DROPOUT_STATIC_MODEL.h5"))
 
 # Latent TSV files
 EXPRESSION_TSV_FILES = {
@@ -158,7 +162,7 @@ FIGURE_6_FILE_NAME = str(FigureFile("Figure_6"))
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)
-N_NEIGHBORS = _np.arange(15, 205, 10)
+N_NEIGHBORS = _np.arange(20, 190, 10)
 N_COMPS = _np.array([5, 10, 15])
 
 ## FIGURE CONSTANTS ##
@@ -200,4 +204,11 @@ RAPA_TIME_ORDER = {
     '5': ('6', 25, 35), 
     '6': ('7', 35, 45),
     '7': ('8', 45, 55)
+}
+
+METRIC_SCALE_LIMS = {
+    'cosine': [0, 2],
+    'euclidean': [0, None],
+    'manhattan': [0, None],
+    'information': [0, 1]
 }

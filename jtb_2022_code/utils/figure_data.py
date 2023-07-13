@@ -157,7 +157,10 @@ class FigureSingleCellData:
             self._load_expts(force_extraction_from_all=from_unprocessed)
         
         if _first_load:
-            self.apply_inplace_to_everything(self._normalize)
+            self.apply_inplace_to_everything(
+                self._normalize,
+                n_counts = int(self.all_data.obs['n_counts'].median())
+            )
             self.save()
             
         self._gene_names = self._all_data.var.loc[:, "CommonName"]
@@ -195,12 +198,21 @@ class FigureSingleCellData:
                                                    (self.all_data.obs["Gene"] == g), :].copy()
     
     @staticmethod
-    def _normalize(adata):
+    def _normalize(
+        adata,
+        n_counts=None
+    ):
         
         adata.layers['counts'] = adata.X.copy()
         adata.X = adata.X.astype(float)
-        _sc.pp.normalize_per_cell(adata)
-        _sc.pp.log1p(adata)
+
+        _sc.pp.normalize_per_cell(
+            adata,
+            counts_per_cell_after=n_counts
+        )
+        _sc.pp.log1p(
+            adata
+        )
         
         return adata
                 
@@ -340,15 +352,21 @@ class FigureSingleCellData:
         
         else:
             print(f"{_fn} not found. Generating velocity data:")
-            adata = self.denoised_data(expt, gene)
-            
-            adata.obs[RAPA_TIME_COL] = self.expt_data[(expt, gene)].obs[RAPA_TIME_COL]
-            adata.obs[CC_TIME_COL] = self.expt_data[(expt, gene)].obs[CC_TIME_COL]
+           
+            # Reset the obs data
+            v_adata = _ad.AnnData(
+                self.denoised_data(expt, gene).X.astype(_np.float32),
+                obs=self.expt_data[(expt, gene)].obs.copy(),
+                var=self.expt_data[(expt, gene)].var.copy(),
+                dtype=_np.float32
+            )
                        
-            calculate_velocities(adata)
-            adata.write(_fn)
+            v_adata.obsp['noise2self_distance_graph'] = self.expt_data[(expt, gene)].obsp['noise2self_distance_graph'].copy()
+                       
+            calculate_velocities(v_adata)
+            v_adata.write(_fn)
             
-            return adata
+            return v_adata
         
     def decay_data(self, expt, gene, recalculate=False):
         
@@ -377,21 +395,26 @@ class FigureSingleCellData:
                 )
 
                 if g_key == 'cell_cycle':
-                    _vdata = _velo_data[_velo_data.obs['Pool'].obs['Pool'].isin([1, 2]), :]
+                    _vdata = _velo_data[_velo_data.obs['Pool'].isin([1, 2]), :].copy()
                 else:
                     _vdata = _velo_data
+                    
+                _out_key = g_key + "_window_decay"
                     
                 calc_decay_windows(
                     _vdata,
                     g_key + "_velocity",
                     time_key,
-                    output_key = g_key + "_window_decay",
+                    output_key = _out_key,
                     output_alpha_key = g_key + "_window_alpha",
                     include_alpha=False,
                     t_min=tmin,
                     t_max=tmax,
                     force=recalculate
-                ) 
+                )
+                
+                _velo_data.uns[_out_key] = _vdata.uns[_out_key]
+                _velo_data.varm[_out_key] = _vdata.varm[_out_key]
                 
             _velo_data.layers['decay_constants'] = decay_window_to_cell_layer(
                 _velo_data,
@@ -417,7 +440,12 @@ class FigureSingleCellData:
             adata_list = [self.decay_data(1, "WT"), self.decay_data(2, "WT")]
 
             for g_key, time_key, tmin, tmax in [('cell_cycle', CC_TIME_COL, 0, 88), ('rapamycin', RAPA_TIME_COL, -10, 60)]:
-                expr = _np.vstack([a.X for a in adata_list])
+                
+                try:
+                    expr = _np.vstack([a.X.A for a in adata_list])
+                except AttributeError:
+                    expr = _np.vstack([a.X for a in adata_list])
+
                 velo = _np.vstack([a.layers[g_key + "_velocity"] for a in adata_list])
                 times = _np.hstack([a.obs[time_key].values for a in adata_list])
                 
@@ -430,7 +458,6 @@ class FigureSingleCellData:
                 self.all_data.var[g_key + "_decay"] = decays
                 self.all_data.var[g_key + "_decay_se"] = decays_se
                 self.all_data.var[g_key + "_alpha"] = a
-                
                                 
                 self.all_data.uns[g_key + "_decay"] = {
                     'params': {
@@ -447,8 +474,7 @@ class FigureSingleCellData:
                     t_min=tmin,
                     t_max=tmax,
                     include_alpha=False,
-                    bootstrap=False,
-                    time_wrap=None if time_key != CC_TIME_COL else CC_LENGTH
+                    bootstrap=False
                 )
                 
                 self.all_data.uns[g_key + "_window_decay"] = {
@@ -469,7 +495,7 @@ class FigureSingleCellData:
             
             self.all_data.layers['decay_constants'] = get_decay_per_cell(
                 self,
-                by_experiment=True
+                by_experiment=False
             ).X
                 
             if VERBOSE:
@@ -481,7 +507,7 @@ class FigureSingleCellData:
             for g_key, time_key, tmin, tmax in [('cell_cycle', CC_TIME_COL, 0, 88), ('rapamycin', RAPA_TIME_COL, -10, 60)]:
                 self.all_data.layers['decay_constants'] = get_decay_per_cell(
                     self,
-                    by_experiment=True
+                    by_experiment=False
                 ).X
 
             if VERBOSE:
@@ -513,11 +539,15 @@ class FigureSingleCellData:
                     self.expt_data[(expt, gene)],
                     neighbors=N_NEIGHBORS,
                     npcs=N_PCS,
+                    connectivity=True,
                     verbose=True
                 )
                 
             adata.obsp['noise2self_distance_graph'] = self.expt_data[(expt, gene)].obsp['noise2self_distance_graph'].copy()
-            run_dewakss(adata)            
+            run_dewakss(
+                adata,
+                n_counts = int(self.all_data.obs['n_counts'].median())
+            )
             adata.write(_fn)
             
             return adata
@@ -550,8 +580,19 @@ class FigureSingleCellData:
 
         # Copy counts and save basic count depth stats
         adata.layers['counts'] = adata.X.copy()
-        adata.obs['n_counts'] = adata.X.sum(axis=1).astype(int)
-        adata.obs['n_genes'] = adata.X.astype(bool).sum(axis=1)
+        
+        _adata_obs_sum = adata.X.sum(axis=1).astype(int)
+        _adata_obs_n = adata.X.astype(bool).sum(axis=1)
+        _adata_var_sum = adata.X.sum(axis=0).astype(int)
+        
+        try:
+            adata.obs['n_counts'] = _adata_obs_sum.A1
+            adata.var['n_counts'] = _adata_var_sum.A1
+            adata.obs['n_genes'] = _adata_obs_n.A1
+        except AttributeError:
+            adata.obs['n_counts'] = _adata_obs_sum
+            adata.var['n_counts'] = _adata_var_sum
+            adata.obs['n_genes'] = _adata_obs_n
 
         # Fix categorical dtypes
         if not _pat.is_categorical_dtype(adata.obs['Pool']):
@@ -584,6 +625,7 @@ class FigureSingleCellData:
             _ifv.program_select(
                 self.all_data,
                 layer='counts',
+                metric='cosine',
                 normalize=True,
                 verbose=True
             )
@@ -604,9 +646,10 @@ class FigureSingleCellData:
                 _ifv.global_graph,
                 neighbors=N_NEIGHBORS,
                 npcs=N_PCS,
+                connectivity=True,
                 verbose=True
             )
-            
+                        
             self.process_times(recalculate=True)
             
     def process_times(self, recalculate=False):
@@ -627,6 +670,10 @@ class FigureSingleCellData:
                 {_rapa_program: RAPA_TIME_ORDER,
                  _cc_program: CC_TIME_ORDER},
                 layer='counts',
+                wrap_time={
+                    _rapa_program: None,
+                    _cc_program: CC_LENGTH
+                },
                 verbose=True
             )
 
@@ -651,13 +698,15 @@ class FigureSingleCellData:
                 self.all_data.obs.loc[_idx, f'program_{_cc_program}_time'] = self.expt_data[k].obs[f'program_{_cc_program}_time']
 
             # Assign the remaining genes
-            self.all_data.var['programs'] = _ifv.assign_genes_to_programs(
+            self.all_data.var['programs'], self.all_data.varm['gene_program_mi'] = _ifv.assign_genes_to_programs(
                 self.all_data,
                 default_program = self.all_data.uns['programs']['rapa_program'],
-                default_threshold = 0.01,
+                default_threshold = 0.1,
                 use_sparse = False,
                 n_bins = 20,
-                verbose = True
+                verbose = True,
+                layer='counts',
+                return_mi=True
             )
 
             self.save()
@@ -683,6 +732,10 @@ class FigureSingleCellData:
                      self.all_data.uns['programs']['cell_cycle_program']: 'CC'},
                     {self.all_data.uns['programs']['rapa_program']: RAPA_TIME_ORDER,
                      self.all_data.uns['programs']['cell_cycle_program']: CC_TIME_ORDER},
+                    wrap_time={
+                        _rapa_program: None,
+                        _cc_program: CC_LENGTH
+                    },
                     layer='X',
                     n_comps=_n_comps
                 )
@@ -702,7 +755,10 @@ class FigureSingleCellData:
             
     def calc_gene_dists(self, recalculate=False):
 
-        if recalculate or 'cosine_distance' not in self.all_data.uns['programs']:
+        _program_ref = self.all_data.uns['programs']
+        _metrics = ['cosine', 'euclidean', 'manhattan', 'information']
+        
+        if recalculate or any(map(lambda x: f'{x}_distance' not in _program_ref, _metrics)):
 
             _dists = _ad.AnnData(
                 self.all_data.layers['counts'],
@@ -712,27 +768,61 @@ class FigureSingleCellData:
 
             _sc.pp.normalize_per_cell(_dists)
             _sc.pp.log1p(_dists)   
-            _sc.pp.highly_variable_genes(_dists, max_mean=_np.inf, min_disp=0.01)
 
-            _dists._inplace_subset_var(_dists.var['highly_variable'].values)
+            _dists._inplace_subset_var(self.all_data.var['leiden'] != '-1')
 
-            _sc.pp.pca(_dists, n_comps=self.all_data.uns['programs']['n_comps'])    
+            _sc.pp.pca(_dists, n_comps=_program_ref['n_comps'])    
 
-            print(f"Using {self.all_data.uns['programs']['n_comps']} PCs for distance")
+            print(f"Using {_program_ref['n_comps']} PCs for distance")
             _dists = (_dists.obsm['X_pca'] @ _dists.varm['PCs'].T).T
 
             _gc.collect()
 
-            for metric in ['cosine', 'euclidean', 'manhattan']:
+            for metric in _metrics:
                 print(f"Calculating metric {metric} on data {_dists.shape}")
-                self.all_data.uns['programs'][f'{metric}_distance'] = pairwise_distances(
-                    _dists, metric=metric
-                )
-
+                
+                if recalculate or f'{metric}_distance' not in _program_ref:
+                    
+                    if metric != 'information':
+                        _program_ref[f'{metric}_distance'] = pairwise_distances(
+                            _dists, metric=metric, n_jobs=-1
+                        )
+                    else:
+                        _program_ref[f'{metric}_distance'] = _ifv.metrics.information_distance(
+                            _ifv.metrics.make_array_discrete(
+                                _dists.T, 10, axis=0
+                            ),
+                            10,
+                            logtype=_np.log2
+                        )
+            
             del _dists
+            
+            self.calc_gene_cosine_dists_all(recalculate=recalculate)
 
             self.save()
             
+            
+    def calc_gene_cosine_dists_all(self, recalculate=False):
+        
+        if recalculate or 'cosine_distance' not in self.all_data.varp:
+            
+            print("Calculating cosine distance for all genes")
+
+            _dists = _ad.AnnData(
+                self.all_data.layers['counts'],
+                dtype=float,
+                var=self.all_data.var
+            )
+
+            _sc.pp.normalize_per_cell(_dists)
+            _sc.pp.log1p(_dists)
+
+            self.all_data.varp['cosine_distance'] = pairwise_distances(
+                 _dists.X.T, metric='cosine', n_jobs=None
+            )
+            
+
     def _all_data_expt_index(self, expt, gene):
         _idx = self.all_data.obs['Experiment'] == expt
         _idx &= self.all_data.obs['Gene'] == gene
@@ -747,7 +837,8 @@ class FigureSingleCellData:
         
         adata.uns['programs'] = {
             'rapa_program': self.all_data.uns['programs']['rapa_program'], 
-            'cell_cycle_program': self.all_data.uns['programs']['cell_cycle_program']
+            'cell_cycle_program': self.all_data.uns['programs']['cell_cycle_program'],
+            'program_names': self.all_data.uns['programs']['program_names']
         }
         
         return adata

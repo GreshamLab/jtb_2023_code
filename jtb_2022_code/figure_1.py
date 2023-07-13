@@ -94,7 +94,7 @@ def plot_figure_1(sc_data, save=True):
 
     axd['umap_1'].set_title("Collection Time", size=8)
     axd['umap_1'].set_xlabel("UMAP1", size=8)
-    axd['umap_2'].set_ylabel("UMAP2", size=8)
+    axd['umap_1'].set_ylabel("UMAP2", size=8)
     axd['umap_1'].set_title("C", loc='left', weight='bold')
     axd['umap_1'].annotate(
         f"n = {sc_data.all_data.shape[0]}",

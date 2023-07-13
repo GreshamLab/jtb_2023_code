@@ -1,4 +1,5 @@
 import os as _os
+import argparse as _argparse
 
 class _FilePathAdjustableRoot:
 
@@ -32,3 +33,75 @@ class ScratchFile(_FilePathAdjustableRoot):
 class SchematicFile(_FilePathAdjustableRoot):
     
     _path_root = "./Schematic"
+    
+class ModelFile(_FilePathAdjustableRoot):
+    
+    _path_root = "./Models"
+
+def parse_file_path_command_line():
+    
+    ap = _argparse.ArgumentParser(description="JTB Figure Pipeline")
+
+    ap.add_argument(
+        "-f",
+        "-F",
+        dest="figure_dir",
+        help="Figure Path",
+        metavar="PATH",
+        default=None
+    )
+
+    ap.add_argument(
+        "-d",
+        "-D",
+        dest="data_dir",
+        help="Data Path",
+        metavar="PATH",
+        default=None
+    )
+
+    ap.add_argument(
+        "-scratch",
+        "-SCRATCH",
+        dest="scratch_dir",
+        help="Scratch Path",
+        metavar="PATH",
+        default=None
+    )
+
+    ap.add_argument(
+        "-s",
+        "-S",
+        dest="schematic_dir",
+        help="Schematic Path",
+        metavar="PATH",
+        default=None
+    )
+    
+    ap.add_argument(
+        "-m",
+        "-M",
+        dest="model_dir",
+        help="Model Path",
+        metavar="PATH",
+        default=None
+    )
+    
+    args, _ = ap.parse_known_args()
+    
+    if args.figure_dir is not None:
+        FigureFile.set_path(args.figure_dir)
+        
+    if args.data_dir is not None:
+        DataFile.set_path(args.data_dir)
+
+    if args.scratch_dir is not None:
+        ScratchFile.set_path(args.scratch_dir)
+        
+    if args.schematic_dir is not None:
+        SchematicFile.set_path(args.schematic_dir)
+        
+    if args.model_dir is not None:
+        ModelFile.set_path(args.model_dir)
+
+    return args

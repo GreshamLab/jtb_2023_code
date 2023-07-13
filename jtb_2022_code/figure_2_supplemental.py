@@ -1,18 +1,29 @@
 import itertools
+import gc
+import sys
+sys.setrecursionlimit(10000)
+
 import pandas as pd
 import scanpy as sc
+import numpy as np
+import anndata as ad
+
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import squareform
 
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib import colors
 
-from scipy.cluster.hierarchy import linkage, dendrogram
 from jtb_2022_code.utils.figure_common import *
 from jtb_2022_code.figure_constants import *
-import numpy as np
 
 from inferelator_velocity.plotting.program_times import program_time_summary
 from inferelator_velocity.plotting.mcv_summary import mcv_plot, cumulative_variance_plot
+
+from inferelator_velocity.utils.keys import (
+    PROGRAM_KEY
+)
 
 def figure_2_supplement_1_plot(data, save=True):
 
@@ -38,10 +49,20 @@ def figure_2_supplement_1_plot(data, save=True):
             comp_str = str(j) + ',' + str(k)
             for ak, c, palette in [("_cc", "CC", cc_palette()), ("_t", "Pool", pool_palette())]:
                 ax_key = 'pc' + str(j) + str(k) + "_" + str(i) + ak
-                fig_refs[ax_key] = sc.pl.pca(data.expt_data[(i, "WT")], ax=axd[ax_key], components=comp_str,
-                                             color=c, palette=palette, title=None,
-                                             show=False, alpha=0.25, size=2, legend_loc='none',
-                                             annotate_var_explained=True)
+                fig_refs[ax_key] = sc.pl.pca(
+                    data.expt_data[(i, "WT")],
+                    ax=axd[ax_key],
+                    components=comp_str,
+                    color=c,
+                    palette=palette,
+                    title=None,
+                    show=False,
+                    alpha=0.25,
+                    size=2,
+                    legend_loc='none',
+                    annotate_var_explained=True
+                )
+                
                 axd[ax_key].set_title("")
                 if ak == "_t":
                     axd[ax_key].set_ylabel("")
@@ -161,8 +182,8 @@ def figure_2_supplement_3_plot(adata, save=True):
     _ami_idx = np.array(
         dendrogram(
             linkage(
-                adata.uns['programs']['mutual_information'], 
-                metric='correlation'), 
+                squareform(adata.uns['programs']['cosine_distance'])
+            ), 
             no_plot=True
         )['leaves']
     )
@@ -179,8 +200,8 @@ def figure_2_supplement_3_plot(adata, save=True):
 
     # Title, Metric, VMIN, VMAX, CBAR
     metrics = {
-        'matrix_1': ("Information", 'information', 0, 1, 'magma_r'),
-        'matrix_2': ("Cosine", 'cosine', 0, 2, 'magma_r'),
+        'matrix_1': ("Cosine", 'cosine', 0, 2, 'magma_r'),
+        'matrix_2': ("Information", 'information', 0, 1, 'magma_r'),
         'matrix_3': ("Euclidean", 'euclidean', 0, int(np.quantile(adata.uns['programs']['euclidean_distance'], 0.95)), 'magma_r'),
         'matrix_4': ("Manhattan", 'manhattan', 0, int(np.quantile(adata.uns['programs']['manhattan_distance'], 0.95)), 'magma_r'),
     }
@@ -215,11 +236,14 @@ def figure_2_supplement_3_plot(adata, save=True):
     
     return fig
 
-def figure_2_supplement_4_11_plot(data, cc_program='1', rapa_program='0', save=True):
+def figure_2_supplement_5_12_plot(data, save=True):
 
     figs = []
     
-    for i, j in zip(range(4, 12, 2), [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
+    cc_program = data.all_data.uns['programs']['cell_cycle_program']
+    rapa_program = data.all_data.uns['programs']['rapa_program']
+    
+    for i, j in zip(range(5, 13, 2), [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
 
         _layout = [['pca1', 'M-G1 / G1', 'G1 / S'], ['pca2', 'S / G2', 'G2 / M'], ['hist', 'M / M-G1', 'cbar']]
 
@@ -236,7 +260,6 @@ def figure_2_supplement_4_11_plot(data, cc_program='1', rapa_program='0', save=T
             cluster_colors = {k: v for k, v in zip(CC_COLS, cc_palette())},
             cbar_title='Phase',
             ax=ax,
-            wrap_time=88,
             alpha=0.1 if j[1] == "WT" else 0.5
         )
 
@@ -263,7 +286,7 @@ def figure_2_supplement_4_11_plot(data, cc_program='1', rapa_program='0', save=T
             cluster_colors = {k: v for k, v in zip(['12', '3', '4', '5', '6', '7', '8'], pool_palette()[1:])},
             cbar_title='Time [Groups]',
             cbar_horizontal=True,
-            time_limits=(-25, 70),
+            time_limits=(-15, 70),
             alpha=0.1 if j[1] == "WT" else 0.5
         )
 
@@ -277,7 +300,7 @@ def figure_2_supplement_4_11_plot(data, cc_program='1', rapa_program='0', save=T
     return figs
 
 
-def figure_2_supplement_12_plot(data, save=True):
+def figure_2_supplement_13_plot(data, save=True):
     
     # Reprocess rho data for heatmaps
     # Select non-denoised
@@ -290,13 +313,15 @@ def figure_2_supplement_12_plot(data, save=True):
     ptr = ptr.loc[ptr['method'] != 'pca', :]
     ptr[['pcs', 'neighbors']] = ptr['values'].str.split("_", expand=True).astype(int)
     
+    neighbors = np.arange(15, 115, 10)
+    
     def _overlay_rect(method, i, ax):
         _ideal_value = ptr.loc[
             ptr.loc[ptr['method'] == method, i].idxmax(),
             ['neighbors', 'pcs']
         ]
 
-        y = np.where(_ideal_value['neighbors'] == N_NEIGHBORS)[0][0] - 0.5
+        y = np.where(_ideal_value['neighbors'] == neighbors)[0][0] - 0.5
         x = np.where(_ideal_value['pcs'] == N_PCS)[0][0] - 0.5
         
         return ax.add_patch(plt.Rectangle(
@@ -342,7 +367,13 @@ def figure_2_supplement_12_plot(data, save=True):
                 index='neighbors',
                 columns='pcs',
                 values=i
-            ).reindex(N_PCS, axis=1).reindex(np.arange(15, 115, 10), axis=0)
+            ).reindex(
+                N_PCS,
+                axis=1
+            ).reindex(
+                neighbors,
+                axis=0
+            )
             
             ax_key = f"{pt_key}_rho_{i}"
 
@@ -392,4 +423,158 @@ def figure_2_supplement_12_plot(data, save=True):
     fig_refs['cbar'].ax.set_title('ρ')
 
     if save:
-        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_12.png", facecolor='white', bbox_inches='tight')
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_13.png", facecolor='white', bbox_inches='tight')
+
+        
+def figure_2_supplement_4_plot(data_obj, save=True):
+    
+    fig_refs = {}
+    fig = plt.figure(figsize=(6, 6), dpi=300)
+
+    axd = {
+        'rapa_heatmap': fig.add_axes([0.08, 0.45, 0.8, 0.5]),
+        'rapa_cbar': fig.add_axes([0.9, 0.45, 0.02, 0.5]),
+        'cc_heatmap': fig.add_axes([0.08, 0.08, 0.8, 0.26]),
+        'cc_cbar': fig.add_axes([0.9, 0.08, 0.02, 0.26])
+    }
+
+    _xticks = np.arange(-10, 70, 10)
+    raw_data, tick_locations = _generate_heatmap_data(
+        data_obj,
+        data_obj.all_data.uns['programs']['rapa_program'],
+        count_threshold=0.1,
+        obs_time_ticks=_xticks
+    )
+
+    fig_refs['rapa_heatmap'] = axd['rapa_heatmap'].pcolormesh(
+        raw_data,
+        cmap='magma',
+        vmin=0,
+        vmax=np.floor(raw_data.max())
+    )
+
+    axd['rapa_heatmap'].set_xticks(tick_locations, labels=_xticks)
+    axd['rapa_heatmap'].set_yticks([])
+    axd['rapa_heatmap'].set_ylabel("Rapamycin Response Genes", size=8)
+    axd['rapa_heatmap'].set_xlabel("Cells (Ordered by Rapamycin Response Time)", size=8)
+    axd['rapa_heatmap'].spines['right'].set_visible(False)
+    axd['rapa_heatmap'].spines['top'].set_visible(False)
+    axd['rapa_heatmap'].spines['left'].set_visible(False)
+    axd['rapa_heatmap'].spines['bottom'].set_visible(False)
+
+    fig_refs['rapa_cbar'] = fig.colorbar(
+        fig_refs['rapa_heatmap'],
+        cax=axd['rapa_cbar'],
+        orientation='vertical',
+        ticks=[0, np.floor(raw_data.max())]
+    )
+
+    fig_refs['rapa_cbar'].set_label(
+        "$log_2$(Pseudocount)",
+        labelpad=-1
+    )
+
+    del raw_data
+    del tick_locations
+
+    gc.collect()
+
+    _xticks = np.arange(0, 80, 20).tolist() + [88]
+    raw_data, tick_locations = _generate_heatmap_data(
+        data_obj,
+        data_obj.all_data.uns['programs']['cell_cycle_program'],
+        obs_time_ticks=_xticks,
+        count_threshold=0.1
+    )
+
+    fig_refs['cc_heatmap'] = axd['cc_heatmap'].pcolormesh(
+        raw_data,
+        cmap='magma',
+        vmin=0,
+        vmax=np.floor(raw_data.max())
+    )
+
+    axd['cc_heatmap'].set_xticks(tick_locations, labels=_xticks)
+    axd['cc_heatmap'].set_yticks([])
+    axd['cc_heatmap'].set_ylabel("Cell Cycle Response Genes", size=8)
+    axd['cc_heatmap'].set_xlabel("Cells (Ordered by Cell Cycle Time)", size=8)
+    axd['cc_heatmap'].spines['right'].set_visible(False)
+    axd['cc_heatmap'].spines['top'].set_visible(False)
+    axd['cc_heatmap'].spines['left'].set_visible(False)
+    axd['cc_heatmap'].spines['bottom'].set_visible(False)
+
+    fig_refs['cc_cbar'] = fig.colorbar(
+        fig_refs['cc_heatmap'],
+        cax=axd['cc_cbar'],
+        orientation='vertical',
+        ticks=[0, np.floor(raw_data.max())]
+    )
+
+    fig_refs['cc_cbar'].set_label(
+        "$log_2$(Pseudocount)",
+        labelpad=-1
+    )
+
+    fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_4.png", facecolor="white")
+
+
+def _generate_heatmap_data(
+    data_obj,
+    program,
+    count_threshold=None,
+    obs_time_ticks=None
+):
+
+    raw_data = ad.AnnData(
+        data_obj.all_data.layers['counts'],
+        dtype=float,
+        var=data_obj.all_data.var
+    )
+
+    sc.pp.normalize_per_cell(raw_data)
+
+    _program_idx = data_obj.all_data.var['programs'] == program
+    
+    if count_threshold is not None:
+        _gene_means = data_obj.all_data.X.mean(axis=0)
+        
+        try:
+            _gene_means = _gene_means.A1
+        except AttributeError:
+            pass
+        
+        _program_idx &= _gene_means > count_threshold
+
+    sc.pp.log1p(raw_data, base=2)
+
+    _gene_order_idx = dendrogram(
+        linkage(
+            squareform(
+                data_obj.all_data.varp['cosine_distance'][_program_idx, :][:, _program_idx],
+                checks=False
+            )
+        ),
+        no_plot=True
+    )['leaves']
+
+    _wt_idx = data_obj.all_data.obs['Gene'] == 'WT'
+    _rapa_time_key = f"program_{program}_time"
+
+    _obs_order_idx = data_obj.all_data.obs.loc[_wt_idx, _rapa_time_key].argsort()
+    
+    if obs_time_ticks is None:
+        _obs_times = None
+    else:
+        _obs_times = data_obj.all_data.obs.loc[_wt_idx, _rapa_time_key].sort_values()
+        _obs_times = [np.abs(_obs_times - x).argmin() for x in obs_time_ticks]
+
+    raw_data = raw_data.X.astype(np.float32)[_wt_idx, :][:, _program_idx]
+    raw_data = raw_data[_obs_order_idx, :][:, _gene_order_idx]
+    raw_data = raw_data.T
+    
+    try:
+        raw_data = raw_data.A
+    except AttributeError:
+        pass
+    
+    return raw_data, _obs_times

@@ -51,11 +51,12 @@ def plot_figure_2(data, save=True):
 
     joint_colormap = colors.ListedColormap(CATEGORY_COLORS + PROGRAM_COLORS)
 
-    _ami_linkage = linkage(squareform(data.all_data.uns[PROGRAM_KEY]['information_distance'], checks=False))
+    _metric = data.all_data.uns[PROGRAM_KEY]['metric']
+    
+    _ami_linkage = linkage(squareform(data.all_data.uns[PROGRAM_KEY][f'{_metric}_distance'], checks=False))
     _ami_dendrogram = dendrogram(_ami_linkage, no_plot=True)
     _ami_idx = np.array(_ami_dendrogram['leaves'])
-    _ami_distances = data.all_data.uns[PROGRAM_KEY]['information_distance'][_ami_idx, :][:, _ami_idx]
-    _ami_information = data.all_data.uns[PROGRAM_KEY]['mutual_information'][_ami_idx, :][:, _ami_idx]
+    _ami_distances = data.all_data.uns[PROGRAM_KEY][f'{_metric}_distance'][_ami_idx, :][:, _ami_idx]
 
     fig_refs = {}
 
@@ -87,20 +88,18 @@ def plot_figure_2(data, save=True):
         _ami_distances,
         'magma_r',
         axd['matrix'],
-        _ami_information,
-        _ami_linkage,
-        None,
         row_data=_rcolors,
         row_cmap=joint_colormap,
         row_ax=axd['rows'],
         row_xlabels=["Cat.", "Prog."],
         colorbar_label=None,
-        vmin=0, vmax=1,
+        vmin=METRIC_SCALE_LIMS[_metric][0],
+        vmax=METRIC_SCALE_LIMS[_metric][1],
         colorbar_ax=axd['info_cbar']
     ))
 
     axd['matrix'].set_xlabel("Genes", size=8)
-    axd['matrix'].set_title("Information\nDistance", size=8)
+    axd['matrix'].set_title(f"{_metric.capitalize()} Distance", size=8)
 
     _time_x = np.concatenate([
         data.expt_data[(i, "WT")].obs['program_rapa_time'].values

@@ -1,13 +1,16 @@
+import gc
 import argparse
-
-from jtb_2022_code import FigureSingleCellData
-from jtb_2022_code.figure_constants import CC_LENGTH
 
 import anndata as ad
 import numpy as np
 import scanpy as sc
 
+from jtb_2022_code.utils.figure_filenames import parse_file_path_command_line
+
 def main():
+    
+    parse_file_path_command_line()
+    
     ap = argparse.ArgumentParser(
         description="Package expression, velocity, and decay data"
     )
@@ -19,13 +22,27 @@ def main():
         required=True
     )
 
-    args = ap.parse_args()
+    args, _ = ap.parse_known_args()
     
     package_data(args.out)
 
+    
 def package_data(out_file):
     
+    from jtb_2022_code.utils.figure_data import FigureSingleCellData
+    from jtb_2022_code.figure_constants import CC_LENGTH
+        
     data = FigureSingleCellData()
+    
+    _data_packager(data, out_file)
+
+    
+def _data_packager(data, out_file=None):
+    
+    PROG_KEYS = {
+        data.all_data.uns['programs']['rapa_program']: "rapamycin",
+        data.all_data.uns['programs']['cell_cycle_program']: "cell_cycle"
+    }
 
     print("Creating new data object from counts")
     
@@ -35,27 +52,15 @@ def package_data(out_file):
         var = data.all_data.var[['CommonName', 'category', 'programs']],
         dtype = data.all_data.layers['counts'].dtype
     )
-
+    
+    inf_data.layers['decay_constants'] = data.all_data.layers['decay_constants']
+    
     inf_data.obs[['UMAP_1', 'UMAP_2']] = data.all_data.obsm['X_umap'][:, 0:2]
     inf_data.obs[['PCA_1', 'PCA_2']] = data.all_data.obsm['X_pca'][:, 0:2]
 
-
-    print("Copying programs and times")
-    inf_data.uns['programs'] = data.all_data.uns['programs'].copy()
-
     # Copy cell cycle time to main object
-    inf_data.obs['program_0_time'] = np.nan
-    inf_data.obs['program_1_time'] = np.nan
-
-    for _, e in data.expt_data.items():
-        inf_data.obs.loc[e.obs_names, 'program_0_time'] = e.obs['program_0_time']
-        inf_data.obs.loc[e.obs_names, 'program_1_time'] = e.obs['program_1_time']
-
-    # Wrap cell cycle times
-    _cc_time = f"program_{inf_data.uns['programs']['cell_cycle_program']}_time"
-
-    inf_data.obs.loc[inf_data.obs[_cc_time] < 0, _cc_time] = inf_data.obs.loc[inf_data.obs[_cc_time] < 0, _cc_time] + CC_LENGTH
-    inf_data.obs.loc[inf_data.obs[_cc_time] > CC_LENGTH, _cc_time] = inf_data.obs.loc[inf_data.obs[_cc_time]  > CC_LENGTH, _cc_time] - CC_LENGTH
+    inf_data.obs['program_rapa_time'] = inf_data.obs[f'program_{data.all_data.uns["programs"]["rapa_program"]}_time']
+    inf_data.obs['program_cc_time'] = inf_data.obs[f'program_{data.all_data.uns["programs"]["cell_cycle_program"]}_time']
 
     # Free memory used by all that count data and whatnot
     data._unload()
@@ -71,14 +76,9 @@ def package_data(out_file):
     )
 
     # Copy decay constants and velocity from the calculated data objects
-    inf_data.layers['decay_constants'] = np.full(inf_data.X.shape, np.nan, dtype=np.float32)
-    inf_data.layers['velocity'] = np.full(inf_data.X.shape, np.nan, dtype=np.float32)
+    inf_data.layers['rapamycin_velocity'] = np.full(inf_data.X.shape, np.nan, dtype=np.float32)
+    inf_data.layers['cell_cycle_velocity'] = np.full(inf_data.X.shape, np.nan, dtype=np.float32)
     inf_data.layers['denoised'] = np.full(inf_data.X.shape, np.nan, dtype=np.float32)
-
-    PROG_KEYS = {
-        inf_data.uns['programs']['rapa_program']: "rapamycin",
-        inf_data.uns['programs']['cell_cycle_program']: "cell_cycle"
-    }
 
     for k in data.expts:
 
@@ -87,50 +87,10 @@ def package_data(out_file):
 
         print(f"Processing experiment {k} ({np.sum(_expt_idx)} observations)")
 
-        _velo_rows = np.zeros_like(inf_data.layers['velocity'][_expt_idx, :])
-        _decay_rows = inf_data.layers['decay_constants'][_expt_idx, :]
-        _expt_metadata = inf_data.obs.loc[_expt_idx, :]
-
         inf_data.layers['denoised'][_expt_idx, :] = data.denoised_data(*k).X
+        inf_data.layers['rapamycin_velocity'][_expt_idx, :] = dd.layers[f"rapamycin_velocity"]
+        inf_data.layers['cell_cycle_velocity'][_expt_idx, :] = dd.layers[f"cell_cycle_velocity"]
 
-        for p in PROG_KEYS.keys():
-
-            _is_rapa = PROG_KEYS[p] == 'rapamycin'
-            _p_idx = inf_data.var['programs'] == p
-
-            print(f"Extracting values for program {PROG_KEYS[p]} ({np.sum(_p_idx)} genes)")
-
-            # Velocity
-            _velo_rows += dd.layers[f"{PROG_KEYS[p]}_velocity"]
-
-            # Decay constants based on windows
-            _last_time = len(dd.uns[f"{PROG_KEYS[p]}_window_decay"]['times']) - 1
-            for i, t in enumerate(dd.uns[f"{PROG_KEYS[p]}_window_decay"]['times']):
-                _t_idx = np.ones(_decay_rows.shape[0], dtype=bool)
-
-                # Put the left edge up if this isn't the leftmost time
-                if i != 0:
-                    _t_idx &= _expt_metadata[f'program_{p}_time'] >= (t - 0.5)
-
-                # Put the right edge up if this isn't the rightmost time
-                if i != _last_time:
-                    _t_idx &= _expt_metadata[f'program_{p}_time'] < (t + 0.5)
-
-                print(
-                    f"\t{i} Time {t}: {np.sum(_t_idx)} observations"
-                )
-
-                _t_decay = _decay_rows[_t_idx, :]
-                _t_decay[:, _p_idx] = dd.varm[f"{PROG_KEYS[p]}_window_decay"][_p_idx, i].flatten()[None, :]
-                _decay_rows[_t_idx, :] = _t_decay
-
-                del _t_decay
-
-        inf_data.layers['velocity'][_expt_idx, :] = _velo_rows
-        inf_data.layers['decay_constants'][_expt_idx, :] = _decay_rows
-
-        del _velo_rows
-        del _decay_rows
         del dd
 
         print(f"Experiment extraction complete [GC: {gc.collect()}]")
@@ -142,10 +102,38 @@ def package_data(out_file):
     inf_data = inf_data[_wt_idx, :].copy()
 
     print(f"Denoised NaN: {np.sum(np.isnan(inf_data.layers['denoised']))}")
-    print(f"Velocity NaN: {np.sum(np.isnan(inf_data.layers['velocity']))}")
-    print(f"Decay NaN: {np.sum(np.isnan(inf_data.layers['decay_constants']))}")
+    print(f"Rapamycin Velocity NaN: {np.sum(np.isnan(inf_data.layers['rapamycin_velocity']))}")
+    print(f"Velocity NaN: {np.sum(np.isnan(inf_data.layers['cell_cycle_velocity']))}")
+    print(f"Cell Cycle Decay NaN: {np.sum(np.isnan(inf_data.layers['decay_constants']))}")
+    
+    print("Calculating transcriptional output")
+    
+    inf_data.layers['rapamycin_transcription'] = inf_data.layers['rapamycin_velocity'].copy()
+    inf_data.layers['rapamycin_transcription'] += np.multiply(
+        inf_data.layers['decay_constants'],
+        inf_data.layers['denoised']
+    )
+    
+    inf_data.layers['cell_cycle_transcription'] = inf_data.layers['cell_cycle_velocity'].copy()
+    inf_data.layers['cell_cycle_transcription'] += np.multiply(
+        inf_data.layers['decay_constants'],
+        inf_data.layers['denoised']
+    )
 
-    inf_data.write(out_file)
+    print(f"Rapamycin Transcription NaN: {np.sum(np.isnan(inf_data.layers['rapamycin_transcription']))}")
+    print(f"Cell Cycle Transcription NaN: {np.sum(np.isnan(inf_data.layers['cell_cycle_transcription']))}")
+    
+    _has_expression = inf_data.X.sum(axis=0).A1 > 0
+    
+    if not np.all(_has_expression):
+        print(f"Trimming {inf_data.shape} to {np.sum(_has_expression)} genes")
+        inf_data = inf_data[:, _has_expression]
+    
+    if out_file is not None:
+        print(f"Writing data {inf_data.shape} to {out_file}")
+        inf_data.write(out_file)
+        
+    return inf_data
 
 
 if __name__ == "__main__":

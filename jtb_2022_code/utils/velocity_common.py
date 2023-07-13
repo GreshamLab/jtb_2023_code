@@ -19,15 +19,22 @@ def calculate_velocities(data,
     
         layer_out = velo_key + "_velocity"
         _wrap_time = None if time_key != 'cell_cycle' else wrap_cc_time
-        
+                
         if layer_out not in data.layers or force:
             lref = data.X if layer == "X" else data.layers[layer]
             
+            try:
+                lref = lref.A
+            except AttributeError:
+                pass
+            
             print(f"Calculating velocities for {velo_key}:")
 
-            data.layers[layer_out] = ifv.calc_velocity(lref, 
-                                                       data.obs[time_key].values, 
-                                                       data.obsp[graph],
-                                                       wrap_time=_wrap_time)
+            data.layers[layer_out] = ifv.calc_velocity(
+                lref, 
+                data.obs[time_key].values, 
+                data.obsp[graph],
+                wrap_time=_wrap_time
+            )
             
     return data

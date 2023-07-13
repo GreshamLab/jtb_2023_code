@@ -134,7 +134,7 @@ def figure_3_supplement_2_plot(data, save=True):
     
     # GET DATA #
     expt2 = data.expt_data[(2, "WT")]
-    expt2_denoised = data.denoised_data(2, "WT")
+    expt2_denoised_X = data.denoised_data(2, "WT").X
     
     # MAKE FIGURE #
     fig = plt.figure(figsize=(5, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
@@ -150,7 +150,7 @@ def figure_3_supplement_2_plot(data, save=True):
     # PLOT ONE EXAMPLE #
     _plot_velocity_calc(
         expt2,
-        expt2_denoised.X,
+        expt2_denoised_X,
         expt2.obs.index.get_loc(expt2.obs.sample(1, random_state=100).index[0]),
         pca_ax=axd['pca_1'],
         expr_ax=axd['velo_1'],
@@ -162,7 +162,7 @@ def figure_3_supplement_2_plot(data, save=True):
     # PLOT ANOTHER EXAMPLE #
     _plot_velocity_calc(
         expt2,
-        expt2_denoised.X,
+        expt2_denoised_X,
         expt2.obs.index.get_loc(expt2.obs.sample(1, random_state=101).index[0]),
         pca_ax=axd['pca_2'],
         expr_ax=axd['velo_2'],
@@ -435,10 +435,17 @@ def _plot_velocity_calc(
         fontsize='medium',
         color='darkred'
     )
-
+    
     gene_loc = adata.var_names.get_loc(gene)
+    gene_data = expr_layer[:, gene_loc]
+    
+    try:
+        gene_data = gene_data.A
+    except AttributeError:
+        pass
+
     delta_x = adata.obs[time_obs_key].iloc[connecteds] - adata.obs[time_obs_key].iloc[center]
-    delta_y = expr_layer[connecteds, gene_loc] - expr_layer[center, gene_loc]
+    delta_y = gene_data[connecteds] - gene_data[center]
 
     lr = LinearRegression(fit_intercept=False).fit(delta_x.values.reshape(-1, 1), delta_y.reshape(-1, 1))
     slope_dxdt = lr.coef_[0][0]

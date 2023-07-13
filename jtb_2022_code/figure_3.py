@@ -2,8 +2,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.transforms import Bbox
 
 from jtb_2022_code.utils.figure_common import *
 from jtb_2022_code.figure_constants import *
@@ -61,8 +59,8 @@ def _fig3_plot(
         'counts_2': fig.add_axes([_x_right, 0.68, _width, _height]),
         'velocity_2': fig.add_axes([_x_right, 0.38, _width, _height]),
         'decay_2': fig.add_axes([_x_right, 0.08, _width, _height]),
-        'legend': fig.add_axes([0.9, 0.38, 0.1, 0.57]),
-        'elegend': fig.add_axes([0.9, 0.08, 0.1, _height])
+        'legend': fig.add_axes([0.91, 0.38, 0.1, 0.57]),
+        'elegend': fig.add_axes([0.91, 0.08, 0.1, _height])
     }
 
     if gene_labels is None:
@@ -195,9 +193,16 @@ def _get_fig3_data(data_obj, genes=None):
         genes = FIGURE_4_GENES
 
     _var_idx = data_obj.all_data.var_names.get_indexer(genes)
+    
+    fig3_data = data_obj.all_data.X[:, _var_idx]
+    
+    try:
+        fig3_data = fig3_data.A
+    except AttributeError:
+        pass
 
     fig3_data = ad.AnnData(
-        data_obj.all_data.layers['counts'][:, _var_idx],
+        fig3_data,
         obs = data_obj.all_data.obs[['Pool', 'Experiment', 'Gene', 'program_0_time', 'program_1_time']],
         dtype=np.float32
     )

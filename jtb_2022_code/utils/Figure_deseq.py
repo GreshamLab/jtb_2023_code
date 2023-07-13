@@ -70,11 +70,18 @@ class DESeq2:
         """
         self.gene_names = count_data.columns.copy()
         self.sample_names = count_data.index.copy()
-        self.count_matrix, self.design_matrix, self.formula = self._deseq_to_r(count_data, meta_data, design_formula)
+        self.count_matrix = count_data
+        self.design_matrix = meta_data
+        self.formula = _Formula(design_formula)
         self.threads = threads
         
     def run(self, **kwargs):
-        self.de_obj = self._execute_deseq(self.count_matrix, self.design_matrix, self.formula, self.threads, **kwargs)
+        self.de_obj = self._execute_deseq(
+            self.count_matrix,
+            self.design_matrix,
+            self.formula, self.threads,
+            **kwargs
+        )
         return self
         
     def results(self, contrast, lfcThreshold=0, **kwargs):
@@ -104,10 +111,12 @@ class DESeq2:
 
     @classmethod
     def _execute_deseq(cls, r_count, r_meta, r_design, threads=1, **kwargs):
-        dds = cls.deseq.DESeqDataSetFromMatrix(countData=r_count, 
-                                               colData=r_meta,
-                                               design=r_design)
-        return cls.deseq.DESeq(dds, BPPARAM=cls.bp.MulticoreParam(workers=threads), **kwargs)
+        
+        with rpy2.robjects.default_converter.context():
+            dds = cls.deseq.DESeqDataSetFromMatrix(countData=r_count, 
+                                                   colData=r_meta,
+                                                   design=r_design)
+            return cls.deseq.DESeq(dds, BPPARAM=cls.bp.MulticoreParam(workers=threads), **kwargs)
 
     @classmethod
     def _return_results(cls, r_deseq, contrast, lfcThreshold=0.0, **kwargs):
