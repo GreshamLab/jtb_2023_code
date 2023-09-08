@@ -7,6 +7,7 @@ import pandas as pd
 import scanpy as sc
 import numpy as np
 import anndata as ad
+import statsmodels.api as sm
 
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
@@ -30,16 +31,16 @@ def figure_2_supplement_1_plot(data, save=True):
     ### BUILD PLOT ###
     fig_refs = {}
 
-    layout = [['pc12_1_cc', 'pc12_1_t', '.', 'pc12_2_cc', 'pc12_2_t', '.'],
+    layout = [['pc12_1_cc', 'pc12_1_t', '.', 'pc12_2_cc', 'pc12_2_t', 't_cbar'],
               ['pc13_1_cc', 'pc13_1_t', '.', 'pc13_2_cc', 'pc13_2_t', 't_cbar'],
               ['pc14_1_cc', 'pc14_1_t', '.', 'pc14_2_cc', 'pc14_2_t', 't_cbar'],
               ['pc23_1_cc', 'pc23_1_t', '.', 'pc23_2_cc', 'pc23_2_t', 'cc_cbar'],
               ['pc24_1_cc', 'pc24_1_t', '.', 'pc24_2_cc', 'pc24_2_t', 'cc_cbar'],
-              ['pc34_1_cc', 'pc34_1_t', '.', 'pc34_2_cc', 'pc34_2_t', '.']]
+              ['pc34_1_cc', 'pc34_1_t', '.', 'pc34_2_cc', 'pc34_2_t', 'cc_cbar']]
 
     fig, axd = plt.subplot_mosaic(layout,
-                                  gridspec_kw=dict(width_ratios=[1, 1, 0.1, 1, 1, 0.1], 
-                                                   height_ratios=[1, 1, 1, 1, 1, 1],
+                                  gridspec_kw=dict(width_ratios=[1, 1, 0.1, 1, 1, 0.8], 
+                                                   height_ratios=[1, 1, 1, 1, 1, 0.8],
                                                    wspace=0, hspace=0.01), 
                                   figsize=(6, 9), dpi=300,
                                   constrained_layout=True)
@@ -72,22 +73,78 @@ def figure_2_supplement_1_plot(data, save=True):
     axd['pc12_1_t'].set_title("Rep. 1")
     axd['pc12_2_t'].set_title("Rep. 2")
 
+    axd['cc_cbar'].imshow(plt.imread(FIG_CC_LEGEND_VERTICAL_FILE_NAME), aspect='equal')
     axd['cc_cbar'].axis('off')
-    fig_refs['cc_cbar'] = add_legend(axd['cc_cbar'], 
-                                     cc_palette(), 
-                                     CC_COLS,
-                                     title="Cell Cycle")
-
+    axd['t_cbar'].imshow(plt.imread(FIG_RAPA_LEGEND_VERTICAL_FILE_NAME), aspect='equal')
     axd['t_cbar'].axis('off')
-    fig_refs['t_cbar'] = add_legend(axd['t_cbar'], 
-                                    pool_palette(), 
-                                    data.all_data.obs['Pool'].dtype.categories.values,
-                                    title="Time")
 
     if save:
         fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_1.png", facecolor="white", bbox_inches='tight')
     
     return fig
+
+def figure_2_supplement_14_plot(save=True):
+    
+    growth_data = pd.read_csv(CC_LENGTH_DATA_FILE, sep="\t").melt(
+        id_vars='Time', var_name='Replicate', value_name="Count"
+    )
+    growth_data['Count'] *= 1e6
+    growth_data['Count'] = np.log2(growth_data['Count'])
+
+    model = sm.OLS(
+        growth_data['Count'],
+        np.hstack((
+            growth_data['Time'].values.reshape(-1, 1),
+            np.ones((growth_data.shape[0], 1))
+        ))
+    )
+    results = model.fit()
+    results.params['x1']
+
+    _lsq = results.params['x1'], results.params['const'], results.bse['x1']
+    _se = 1 / (_lsq[0] - _lsq[2]) - 1 / (_lsq[0])
+    
+    fig, ax = plt.subplots(1, 1, figsize=(2, 2), dpi=300)
+    plt.subplots_adjust(top=0.9, bottom=0.2, left=0.25, right=0.95)
+
+    ax.plot(
+        np.arange(0, growth_data['Time'].max()),
+        np.arange(0, growth_data['Time'].max()) * _lsq[0] + _lsq[1],
+        linestyle=":",
+        color='red'
+    )
+    
+    ax.set_title("Doubling Time (YPD)", size=8)
+
+    ax.annotate(
+        f"$t_d$ = {1 / _lsq[0]:.2f} ± {_se:.2f}\nn = 6",
+        (0.25, 0.12),
+        xycoords='axes fraction',
+        size=8
+    )
+    ax.set_ylim(np.log2(2e6), np.log2(4e7))
+    ax.set_yticks(
+        [np.log2(2e6), np.log2(5e6), np.log2(1e7), np.log2(2e7)],
+        ["2e6", "5e6", "1e7", "2e7"]
+    )
+    ax.tick_params(axis='both', which='major', labelsize=8)
+    ax.set_xlabel("Time [min]", size=8)
+    ax.set_ylabel("Conc. [cells / mL]", size=8)
+
+    for gd, marker in zip(
+        growth_data.groupby('Replicate'),
+        ['o', "^", "<", 's', 'X', 'D']
+    ):
+        ax.scatter(
+            gd[1]['Time'],
+            gd[1]['Count'],
+            color='black',
+            marker=marker,
+            s=2
+        )
+
+    if save:
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_2.png", facecolor="white")
 
 
 def figure_2_supplement_2_plot(data, save=True):
@@ -172,7 +229,7 @@ def figure_2_supplement_2_plot(data, save=True):
                 axd[f'title_{j}_{i}'].axis('off')
 
     if save:
-        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_2.png", facecolor="white", bbox_inches='tight')
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_3.png", facecolor="white", bbox_inches='tight')
     
     return fig
                 
@@ -232,7 +289,7 @@ def figure_2_supplement_3_plot(adata, save=True):
         axd[ax_id].set_title(label, loc='left', weight='bold')
         
     if save:
-        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_3.png", facecolor="white")
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_4.png", facecolor="white")
     
     return fig
 
@@ -243,7 +300,7 @@ def figure_2_supplement_5_12_plot(data, save=True):
     cc_program = data.all_data.uns['programs']['cell_cycle_program']
     rapa_program = data.all_data.uns['programs']['rapa_program']
     
-    for i, j in zip(range(5, 13, 2), [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
+    for i, j in zip(range(6, 14, 2), [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
 
         _layout = [['pca1', 'M-G1 / G1', 'G1 / S'], ['pca2', 'S / G2', 'G2 / M'], ['hist', 'M / M-G1', 'cbar']]
 
@@ -423,7 +480,7 @@ def figure_2_supplement_13_plot(data, save=True):
     fig_refs['cbar'].ax.set_title('ρ')
 
     if save:
-        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_13.png", facecolor='white', bbox_inches='tight')
+        fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_14.png", facecolor='white', bbox_inches='tight')
 
         
 def figure_2_supplement_4_plot(data_obj, save=True):
@@ -515,7 +572,7 @@ def figure_2_supplement_4_plot(data_obj, save=True):
         labelpad=-1
     )
 
-    fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_4.png", facecolor="white")
+    fig.savefig(FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_5.png", facecolor="white")
 
 
 def _generate_heatmap_data(

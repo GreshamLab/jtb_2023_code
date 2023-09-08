@@ -14,24 +14,13 @@ from inferelator.preprocessing import PreprocessData
 from inferelator.utils import InferelatorData, inferelator_verbose_level
 from inferelator_velocity.times import _wrap_time
 
-from jtb_2022_code.figure_constants import TFA_FILE, INFERELATOR_PRIORS_FILE, CC_LENGTH
+from jtb_2022_code.figure_constants import INFERELATOR_PRIORS_FILE, CC_LENGTH
 
 import os
 import gc
 import anndata as ad
 import numpy as np
 import pandas as pd
-
-inferelator_verbose_level(1)
-
-PreprocessData.set_preprocessing_method(
-    method_tfa='robustscaler',
-    method_predictors='zscore',
-    method_response='zscore',
-    scale_limit_predictors=10,
-    scale_limit_response=10,
-    scale_limit_tfa=20
-)
 
 def calc_activity_expression(
     adata,

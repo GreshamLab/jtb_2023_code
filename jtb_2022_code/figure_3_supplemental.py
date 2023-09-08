@@ -1,503 +1,375 @@
+import numpy as np
+import pandas as pd
+import anndata as ad
+import scanpy as sc
+import torch
+
 import matplotlib
 import matplotlib.pyplot as plt
-import numpy as np
-import scanpy as sc
+import matplotlib.cm as cm
+import matplotlib.colors as colors
+import matplotlib.patches as patches
 
-from jtb_2022_code.utils.figure_common import *
+from torch.utils.data import DataLoader
+from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import StandardScaler
+
+from supirfactor_dynamical import (
+    read,
+    TimeDataset,
+    TruncRobustScaler
+)
+
 from jtb_2022_code.figure_constants import *
-from .figure_3 import _get_fig3_data, _fig3_plot
+from jtb_2022_code.utils.model_result_loader import (
+    load_model_results,
+    plot_results,
+    plot_losses,
+    get_plot_idx
+)
 
-from inferelator_velocity.decay import calc_decay
-from matplotlib import collections
-from sklearn.linear_model import LinearRegression
+model_labels = {
+    "static_meta": "Static",
+    "rnn": "Dynamical",
+    "rnn_predictive": "Predictive",
+    "tuned": "Tuned"
+}
 
+def figure_3_supplement_1_plot(save=True):
+    
+    data = ad.read(INFERELATOR_DATA_FILE)
+    prior = pd.read_csv(INFERELATOR_PRIORS_FILE, sep="\t", index_col=0)
 
-def figure_3_supplement_1_plot(data, save=True):
+    data_scaler = RobustScaler(with_centering=False)
+    data.layers['robust_scaled'] = data_scaler.fit_transform(data.X)
+    data_scaler_velo = RobustScaler(with_centering=False)
+    data.layers['robust_scaled_rapa_velocity'] = data_scaler_velo.fit_transform(data.layers['rapamycin_velocity'])
 
-    fig_refs = {}
+    trunc_scaler = TruncRobustScaler(with_centering=False)
+    data.layers['special_scaled'] = trunc_scaler.fit_transform(data.X)
+    data.layers['special_scaled_rapa_velocity'] = trunc_scaler.fit_transform(data.layers['rapamycin_velocity'])
 
-    fig = plt.figure(figsize=(6, 4), dpi=300)
+    class RobustMinScaler(RobustScaler):
+        """Applies the RobustScaler and then adjust minimum value to 0.
 
-    _width = 0.3
-    _halfwidth = 0.12
-    _height = 0.22
+        """
 
-    _x_left = 0.12
-    _x_right = 0.55
+        def transform(self, X):
+
+            X = super().transform(X)
+
+            _data_min = X.min(axis=0)
+
+            try:
+                _data_min = _data_min.A.flatten()
+            except AttributeError:
+                pass
+
+            _min_g_zero = _data_min > 0
+
+            if np.any(_min_g_zero):
+                X[:, _min_g_zero] = X[:, _min_g_zero] - _data_min[_min_g_zero][None, :]
+
+            return X
+
+    rmin_scaler = RobustMinScaler(with_centering=False, quantile_range=(1, 99))
+    data.layers['robustminscaler_scaled'] = rmin_scaler.fit_transform(data.X)
+    data.layers['robustminscaler_scaled_velocity'] = rmin_scaler.fit_transform(data.layers['rapamycin_velocity'])
+    
+    fig, ax = plt.subplots(2, 4, dpi=300, figsize=(8,6), gridspec_kw={'wspace': 0.3, 'hspace': 0.75})
+    fig.subplots_adjust(bottom=0.4)
 
     axd = {
-        'exp_var_1': fig.add_axes([_x_left + 0.05, 0.72, 0.2, 0.2]),
-        'exp_var_2': fig.add_axes([0.6, 0.72, 0.2, 0.2]),
-
-        'pc12_1': fig.add_axes([_x_left, 0.36, _halfwidth, _height]),
-        'denoised_pc12_1': fig.add_axes([_x_left + _halfwidth + 0.05, 0.36, _halfwidth, _height]),
-
-        'pc12_2': fig.add_axes([_x_right, 0.36, _halfwidth, _height]),
-        'denoised_pc12_2': fig.add_axes([_x_right + _halfwidth + 0.05, 0.36, _halfwidth, _height]),
-
-        'pc13_1': fig.add_axes([_x_left, 0.08, _halfwidth, _height]),
-        'denoised_pc13_1': fig.add_axes([_x_left + _halfwidth + 0.05, 0.08, _halfwidth, _height]),
-
-        'pc13_2': fig.add_axes([_x_right, 0.08, _halfwidth, _height]),
-        'denoised_pc13_2': fig.add_axes([_x_right + _halfwidth + 0.05, 0.08, _halfwidth, _height]),
-
-        'legend': fig.add_axes([0.9, 0.1, 0.1, 0.55])
+        'prior_bar': fig.add_axes([0.125, 0.075, 0.345, 0.2]),
+        'prior_genes': fig.add_axes([0.555, 0.075, 0.345, 0.2])
     }
 
-    for i in range(1, 3):
-
-        expt_dd = data.denoised_data(i, "WT")
-        expt_dd.obsm['X_pca'] = expt_dd.obsm['denoised_pca']
-        _n_pcs = 100
-
-        rgen = np.random.default_rng(441)
-        overplot_shuffle = np.arange(expt_dd.shape[0])
-        rgen.shuffle(overplot_shuffle)
-
-        fig_refs[f'exp_var_{i}'] = axd[f'exp_var_{i}'].plot(
-            np.arange(0, _n_pcs + 1), 
-            np.insert(np.cumsum(data.expt_data[(i, "WT")].uns['pca']['variance_ratio'][:_n_pcs]), 0, 0),
-            c='black',
-            alpha=1
-        )
-
-        fig_refs[f'exp_var_{i}'] = axd[f'exp_var_{i}'].plot(
-            np.arange(0, _n_pcs + 1), 
-            np.insert(np.cumsum(expt_dd.uns['pca']['variance_ratio'][:_n_pcs]), 0, 0),
-            c='black',
-            linestyle='--',
-            alpha=1
-        )
-
-        axd[f'exp_var_{i}'].set_title(f"Replicate {i}", size=8)
-        axd[f'exp_var_{i}'].set_ylim(0, 1)
-        axd[f'exp_var_{i}'].set_xlim(0, 100)
-        axd[f'exp_var_{i}'].set_xlabel("# PCs", size=8)
-        axd[f'exp_var_{i}'].set_ylabel("Cum. Var. Expl.", size=8)
-        axd[f'exp_var_{i}'].tick_params(labelsize=8)
-
-        for k in range(2, 4):
-            comp_str = str(1) + ',' + str(k)
-            sc.pl.pca(
-                data.expt_data[(i, "WT")],
-                ax=axd[f"pc1{k}_{i}"],
-                components=comp_str,
-                color='Pool',
-                palette= pool_palette(),
-                title=None,
-                show=False,
-                alpha=0.25,
-                size=2,
-                legend_loc='none',
-                annotate_var_explained=True
-            )
-
-            axd[f"pc1{k}_{i}"].set_title(None)
-            axd[f"pc1{k}_{i}"].xaxis.label.set_size(8)
-            axd[f"pc1{k}_{i}"].yaxis.label.set_size(8)
-
-            sc.pl.pca(
-                expt_dd,
-                ax=axd[f"denoised_pc1{k}_{i}"],
-                components=comp_str,
-                color='Pool',
-                palette= pool_palette(),
-                title=None,
-                show=False,
-                alpha=0.25,
-                size=2,
-                legend_loc='none',
-                annotate_var_explained=True
-            )
-
-            axd[f"denoised_pc1{k}_{i}"].set_title(None)
-            axd[f"denoised_pc1{k}_{i}"].xaxis.label.set_size(8)
-            axd[f"denoised_pc1{k}_{i}"].yaxis.label.set_size(8)
-
-            if k == 2:
-                axd[f"pc1{k}_{i}"].set_title("Counts", size=8)
-                axd[f"denoised_pc1{k}_{i}"].set_title("Denoised", size=8)
-
-    axd['legend'].imshow(plt.imread(FIG_RAPA_LEGEND_VERTICAL_FILE_NAME), aspect='equal')
-    axd['legend'].axis('off')
-    
-    axd[f'exp_var_1'].set_title("A", loc='left', x=-0.6, y=0.9, weight='bold')
-    axd[f'pc12_1'].set_title("B", loc='left', x=-0.4, y=0.9, weight='bold')
-    
-    if save:
-        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME + "_1.png", facecolor='white')
-
-    return fig
-
-    
-def figure_3_supplement_2_plot(data, save=True):
-    
-    # GET DATA #
-    expt2 = data.expt_data[(2, "WT")]
-    expt2_denoised_X = data.denoised_data(2, "WT").X
-    
-    # MAKE FIGURE #
-    fig = plt.figure(figsize=(5, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
-
-    axd = {
-        'image': fig.add_axes([0.075, 0.725, 0.85, 0.225]),
-        'pca_1': fig.add_axes([0.075, 0.45, 0.35, 0.25]),
-        'velo_1': fig.add_axes([0.60, 0.45, 0.35, 0.25]),
-        'pca_2': fig.add_axes([0.075, 0.1, 0.35, 0.25]),
-        'velo_2': fig.add_axes([0.60, 0.1, 0.35, 0.25])
-    }
-
-    # PLOT ONE EXAMPLE #
-    _plot_velocity_calc(
-        expt2,
-        expt2_denoised_X,
-        expt2.obs.index.get_loc(expt2.obs.sample(1, random_state=100).index[0]),
-        pca_ax=axd['pca_1'],
-        expr_ax=axd['velo_1'],
-        gene="YOR063W",
-        gene_name=data.gene_common_name("YOR063W"),
-        time_obs_key=f"program_{data.all_data.uns['programs']['rapa_program']}_time"
-    )
-
-    # PLOT ANOTHER EXAMPLE #
-    _plot_velocity_calc(
-        expt2,
-        expt2_denoised_X,
-        expt2.obs.index.get_loc(expt2.obs.sample(1, random_state=101).index[0]),
-        pca_ax=axd['pca_2'],
-        expr_ax=axd['velo_2'],
-        gene="YKR039W",
-        gene_name=data.gene_common_name("YKR039W"),
-        time_obs_key=f"program_{data.all_data.uns['programs']['rapa_program']}_time"
-    )
-
-    axd['pca_1'].set_title(r"$\bf{B}$" + "  i", loc='left', x=-0.2)
-    axd['pca_2'].set_title(r"$\bf{C}$" + "  i", loc='left', x=-0.2)
-    axd['velo_1'].set_title("ii", loc='left', x=-0.2)
-    axd['velo_2'].set_title("ii", loc='left', x=-0.2)
-
-    # DRAW SCHEMATIC #
-    axd['image'].set_title(r"$\bf{A}$", loc='left', x=-0.075)
-    axd['image'].imshow(plt.imread(SFIG3A_FILE_NAME), aspect='equal')
-    axd['image'].axis('off')
-
-    if save:
-        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME + "_2.png", facecolor='white')
-    
-    return fig
-
-def figure_3_supplement_3_plot(data, f3_data=None, save=True):
-    
-    if f3_data is None:
-        f3_data = _get_fig3_data(data)
-        
-    time_key = f"program_{data.all_data.uns['programs']['rapa_program']}_time"
-    
-    def ticks_off(ax):
-        ax.set_yticks([], [])
-        ax.set_xticks([], [])
-
-    fig_refs = {}
-
-    fig = plt.figure(figsize=(4, 4), dpi=300)
-
-    _small_w = 0.1
-    _small_h = 0.125
-
-    axd = {
-        'image': fig.add_axes([0.15, 0.67, 0.77, 0.33]),
-        'decay_1': fig.add_axes([0.2, 0.39, 0.32, 0.23]),
-        'decay_2': fig.add_axes([0.60, 0.39, 0.32, 0.23]),
-        'decay_1-1': fig.add_axes([0.2, 0.16, _small_w, _small_h]),
-        'decay_1-2': fig.add_axes([0.31, 0.16, _small_w, _small_h]),
-        'decay_1-3': fig.add_axes([0.42, 0.16, _small_w, _small_h]),
-        'decay_1-4': fig.add_axes([0.2, 0.025, _small_w, _small_h]),
-        'decay_1-5': fig.add_axes([0.31, 0.025, _small_w, _small_h]),
-        'decay_1-6': fig.add_axes([0.42, 0.025, _small_w, _small_h]),
-        'decay_2-1': fig.add_axes([0.6, 0.16, _small_w, _small_h]),
-        'decay_2-2': fig.add_axes([0.71, 0.16, _small_w, _small_h]),
-        'decay_2-3': fig.add_axes([0.82, 0.16, _small_w, _small_h]),
-        'decay_2-4': fig.add_axes([0.6, 0.025, _small_w, _small_h]),
-        'decay_2-5': fig.add_axes([0.71, 0.025, _small_w, _small_h]),
-        'decay_2-6': fig.add_axes([0.82, 0.025, _small_w, _small_h]),
-    }
-
-    color_vec = to_pool_colors(f3_data.obs['Pool'])
-
-    rgen = np.random.default_rng(8)
-    overplot_shuffle = np.arange(f3_data.shape[0])
-    rgen.shuffle(overplot_shuffle)
-
-    for i, g in enumerate(FIGURE_4_GENES):
-
-        fig_refs[f'decay_{i}'] = axd[f'decay_{i+1}'].scatter(
-            x=f3_data.layers['denoised'][overplot_shuffle, i], 
-            y=f3_data.layers['velocity'][overplot_shuffle, i],
-            c=color_vec[overplot_shuffle],
-            alpha=0.2,
-            s=1
-        )
-
-        xlim = np.quantile(f3_data.layers['denoised'][:, i], 0.995)
-        ylim = np.abs(np.quantile(f3_data.layers['velocity'][:, i], [0.001, 0.999])).max()
-
-        axd[f'decay_{i+1}'].set_xlim(0, xlim)
-        axd[f'decay_{i+1}'].set_ylim(-1 * ylim, ylim)
-        velocity_axes(axd[f'decay_{i+1}'])
-        axd[f'decay_{i+1}'].tick_params(labelsize=8)
-
-        if i == 0:
-            axd[f'decay_{i+1}'].set_ylabel(
-                "RNA Velocity\n(Counts/minute)", size=8
-            )
-
-        axd[f'decay_{i+1}'].set_xlabel(
-            "Expression (Counts)", size=8, labelpad=20
-        )
-        axd[f'decay_{i+1}'].set_title(
-            data.gene_common_name(g),
-            size=8,
-            fontdict={'fontweight': 'bold', 'fontstyle': 'italic'}
-        )
-
-        dc = calc_decay(
-            f3_data.layers['denoised'][:, i].reshape(-1, 1),
-            f3_data.layers['velocity'][:, i].reshape(-1, 1),
-            include_alpha=False,
-            lstatus=False
-        )[0][0]
-
-        axd[f'decay_{i+1}'].axline(
-            (0, 0),
-            slope=-1 * dc,
-            color='darkred',
-            linewidth=1,
-            linestyle='--'
-        )
-
-        axd[f'decay_{i+1}'].annotate(
-            r"$\lambda$" + f' = {dc:0.3f}',
-            xy=(0.05, 0.05),
-            xycoords='axes fraction',
-            size=6
-        )
-
-        for j in range (1, 7):
-
-            if j == 1:
-                _start = -10
-            else:
-                _start = 10 * (j - 1)
-
-            _window_idx = f3_data.obs[time_key] > _start
-            _window_idx &= f3_data.obs[time_key] <= (_start + 10)
-
-            _window_adata = f3_data[_window_idx, :]
-            _w_overplot = np.arange(_window_adata.shape[0])
-            rgen.shuffle(_w_overplot)
-
-            fig_refs[f'decay_{i}_{j}'] = axd[f'decay_{i+1}-{j}'].scatter(
-                x=_window_adata.layers['denoised'][_w_overplot, i], 
-                y=_window_adata.layers['velocity'][_w_overplot, i],
-                c=color_vec[_window_idx][_w_overplot],
-                alpha=0.2,
-                s=0.5
-            )
-
-            dc = calc_decay(
-                _window_adata.layers['denoised'][:, i].reshape(-1, 1),
-                _window_adata.layers['velocity'][:, i].reshape(-1, 1),
-                include_alpha=False,
-                lstatus=False
-            )[0][0]
-
-            axd[f'decay_{i+1}-{j}'].axline(
-                (0, 0),
-                slope=-1 * dc,
-                color='darkred',
-                linewidth=1,
-                linestyle='--'
-            )
-
-            axd[f'decay_{i+1}-{j}'].annotate(
-                r"$\lambda$" + f' = {dc:0.3f}',
-                xy=(0.05, 0.05),
-                xycoords='axes fraction',
-                size=6
-            )
-
-            velocity_axes(axd[f'decay_{i+1}-{j}'])
-            ticks_off(axd[f'decay_{i+1}-{j}'])
-
-            axd[f'decay_{i+1}-{j}'].set_xlim(0, xlim)
-            axd[f'decay_{i+1}-{j}'].set_ylim(-1 * ylim, ylim)
-
-    axd['image'].imshow(plt.imread(SFIG3B_FILE_NAME), aspect='equal')
-    axd['image'].axis('off')
-
-    axd['image'].set_title("A", loc='left', weight='bold', x=-0.28, y=0.8)
-    axd['decay_1'].set_title("B", loc='left', weight='bold', x=-0.4, y=0.9)
-    axd['decay_1-1'].set_title("C", loc='left', weight='bold', x=-1.2, y=0.5)
-
-    if save:
-        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME + "_3.png", facecolor='white')
-        
-    return fig
-
-
-def figure_3_supplement_4_plot(data, f3_data=None, save=True):
-    
-    if f3_data is None:
-        f3_data = _get_fig3_data(data)
-
-    color_vec = to_expt_colors(f3_data.obs['Experiment'])
-    
-    fig = _fig3_plot(
-        f3_data,
-        color_vec,
-        FIGURE_4_GENES,
-        gene_labels=[data.gene_common_name(g) for g in FIGURE_4_GENES],
-        time_key=f"program_{data.all_data.uns['programs']['rapa_program']}_time"
-    )
-    
-    if save:
-        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME + "_4.png", facecolor='white')
-
-    return fig
-
-
-def _plot_velocity_calc(
-        adata,
-        expr_layer,
-        center,
-        pca_ax=None,
-        expr_ax=None,
-        time_obs_key='program_0_time',
-        gene="YKR039W",
-        gene_name=None
-    ):
-
-    if pca_ax is None or expr_ax is None:
-        fig, axs = plt.subplots(1, 2, figsize=(5, 3), dpi=300)
-        pca_ax = axs[0]
-        expr_ax = axs[1]
-
-    else:
-        fig = None
-
-    connecteds = adata.obsp['noise2self_distance_graph'][center, :].nonzero()[1]
-
-    pca_ax.scatter(
-        adata.obsm['X_pca'][:, 0],
-        adata.obsm['X_pca'][:, 1],
-        c=to_pool_colors(adata.obs['Pool']),
-        s=0.25,
-        alpha=0.1,
-        zorder=-1
-    )
-
-    pca_ax.add_collection(
-        collections.LineCollection(
-            [(adata.obsm['X_pca'][center, 0:2], adata.obsm['X_pca'][n, 0:2]) for n in connecteds],
-            colors='black',
-            linewidths=0.5,
-            alpha=0.25
-        )
-    )
-
-    pca_ax.scatter(
-        adata.obsm['X_pca'][connecteds, 0],
-        adata.obsm['X_pca'][connecteds, 1],
-        s=0.25,
-        alpha=0.5,
-        c='black'
-    )
-
-    pca_ax.scatter(
-        adata.obsm['X_pca'][center, 0],
-        adata.obsm['X_pca'][center, 1],
-        facecolors='none',
-        edgecolors='r',
-        linewidths=0.5,
-        s=4,
-        zorder=5
-    )
-
-    pca_ax.set_xlabel(f"PC1 ({adata.uns['pca']['variance_ratio'][0] * 100:.2f}%)", size=8)
-    pca_ax.set_xticks([], [])
-    pca_ax.set_ylabel(f"PC2 ({adata.uns['pca']['variance_ratio'][1] * 100:.2f}%)", size=8)
-    pca_ax.set_yticks([], [])
-
-    pca_ax.annotate(
-        f"t = {adata.obs[time_obs_key].iloc[center]:0.2f} min",
-        (0.40, 0.05),
-        xycoords='axes fraction',
-        fontsize='medium',
-        color='darkred'
-    )
-    
-    gene_loc = adata.var_names.get_loc(gene)
-    gene_data = expr_layer[:, gene_loc]
-    
-    try:
-        gene_data = gene_data.A
-    except AttributeError:
-        pass
-
-    delta_x = adata.obs[time_obs_key].iloc[connecteds] - adata.obs[time_obs_key].iloc[center]
-    delta_y = gene_data[connecteds] - gene_data[center]
-
-    lr = LinearRegression(fit_intercept=False).fit(delta_x.values.reshape(-1, 1), delta_y.reshape(-1, 1))
-    slope_dxdt = lr.coef_[0][0]
-
-    expr_ax.scatter(
-        delta_x,
-        delta_y,
-        c=to_pool_colors(adata.obs['Pool'].iloc[connecteds]),
-        s=1,
-        alpha=0.75
-    )
-
-    expr_ax.scatter(
-        0,
-        0,
-        c=to_pool_colors(adata.obs['Pool'].iloc[[center]]),
-        s=20,
-        edgecolors='r',
-        linewidths=0.5,
-    )
-
-    if gene_name is None:
-        gene_name = gene
-
-    expr_ax.set_title(
-        r"$\bf{" + gene_name + "}$: " + f"Cell {center}", size=8
-    )
-    expr_ax.set_xlabel("dt [min]", size=8)
-    expr_ax.set_ylabel("dx [counts]", size=8)
-    expr_ax.tick_params(labelsize=8)
-
-    xlim = np.abs(delta_x).max()
-    ylim = np.abs(delta_y).max()
-
-    expr_ax.set_xlim(-1 * xlim, xlim)
-    expr_ax.set_ylim(-1 * ylim, ylim)
-
-    expr_ax.axline((0, 0), slope=slope_dxdt, linestyle='--', linewidth=1.0, c='black')
-    expr_ax.annotate(
-        f"{slope_dxdt:0.3f} [counts/min]",
-        (0.20, 0.8),
-        xycoords='axes fraction',
-        fontsize='medium',
+    axd['prior_bar'].bar(
+        np.arange(prior.shape[1]),
+        (prior != 0).sum().sort_values(ascending=False),
+        width=1.0,
         color='black'
     )
 
-    expr_ax.annotate(
-        f"n = {len(connecteds)} cells",
-        (0.40, 0.05),
+    axd['prior_bar'].set_title("Prior Knowledge Network Connectivity", size=8)
+    axd['prior_bar'].set_title("C", loc='left', weight='bold', size=10, x=-0.25)
+    axd['prior_bar'].set_xlabel("Regulatory TFs", size=8)
+    axd['prior_bar'].set_ylabel("# Target Genes", size=8)
+    axd['prior_bar'].set_xticks([0, prior.shape[1]], [0, prior.shape[1]])
+    axd['prior_bar'].tick_params(axis='both', which='major', labelsize=8)
+    axd['prior_bar'].set_xlim(0, prior.shape[1])
+
+    axd['prior_bar'].annotate(
+        f"n = {(prior != 0).sum().sum()} edges",
+        xy=(0.1, 0.8),
         xycoords='axes fraction',
-        fontsize='medium',
-        color='darkred'
+        size=8
     )
+
+    axd['prior_genes'].bar(
+        np.arange(prior.shape[0]),
+        (prior != 0).sum(axis=1).sort_values(ascending=False),
+        width=1.0,
+        color='black'
+    )
+
+    axd['prior_genes'].set_xlabel("Target Genes", size=8)
+    axd['prior_genes'].set_ylabel("# Regulatory TFs", size=8)
+    axd['prior_genes'].set_xticks([0, prior.shape[0]], [0, prior.shape[0]])
+    axd['prior_genes'].tick_params(axis='both', which='major', labelsize=8)
+    axd['prior_genes'].set_xlim(0, prior.shape[0])
+
+    axd['prior_genes'].annotate(
+        f"n = {(prior != 0).sum().sum()} edges",
+        xy=(0.1, 0.8),
+        xycoords='axes fraction',
+        size=8
+    )
+
+    def _get_var(x):
+        scalar = StandardScaler(with_mean=False)
+        scalar.fit(x)
+        return scalar.var_
+
+    def _plot_var_hist(layer, ax):
+        if f"{layer}_var" not in data.var.columns: 
+            data.var[f"{layer}_var"] = _get_var(data.layers[layer] if layer != 'X' else data.X)
+
+        _vars = data.var[f"{layer}_var"].values
+        ax.hist(np.log(_vars), bins=100, color='gray')
+        ax.set_xlim(-10, 10)
+        ax.set_xlabel("Log Variance", size=8)
+        ax.axvline(0, 0, 1, color='black', zorder=1, linewidth=0.5, linestyle="--")
+        ax.annotate(f"Max Var:\n{_vars.max():.1f}", xy=(0.55, 0.75), xycoords='axes fraction', size=6)
+        ax.tick_params(axis='both', which='major', labelsize=8)
+
+    _plot_var_hist('X', ax[0, 0])
+    ax[0,0].set_title("Counts", size=8)
+    ax[0,0].set_title("A", loc='left', weight='bold', size=10, x=-0.25)
+
+    _plot_var_hist('robust_scaled', ax[0, 1])
+    ax[0,1].set_title("RobustScaled\nCounts", size=8)
+
+    _plot_var_hist('special_scaled', ax[0, 2])
+    ax[0,2].set_title("TruncRobustScaled\nCounts", size=8)
+
+    _plot_var_hist('robustminscaler_scaled', ax[0, 3])
+    ax[0,3].set_title("RobustMinScaled\nCounts", size=8)
+
+    _plot_var_hist('rapamycin_velocity', ax[1, 0])
+    ax[1,0].set_title("Velocity", size=8)
+    ax[1,0].set_title("B", loc='left', weight='bold', size=10, x=-0.25)
+
+    _plot_var_hist('robust_scaled_rapa_velocity', ax[1, 1])
+    ax[1,1].set_title("RobustScaled\nVelocity", size=8)
+
+    _plot_var_hist('special_scaled_rapa_velocity', ax[1, 2])
+    ax[1,2].set_title("TruncRobustScaled\nVelocity", size=8)
+
+    _plot_var_hist('robustminscaler_scaled_velocity', ax[1, 3])
+    ax[1,3].set_title("RobustMinScaled\nVelocity", size=8)
+
+    if save:
+        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME +"_1.png", facecolor="white")
+        
+    return fig
+
+def figure_3_supplement_2_plot(supirfactor_results, supirfactor_losses, save=True):
+    
+    fig_refs = {}
+    fig, axd = plt.subplots(4, 6, figsize=(8, 8), dpi=MAIN_FIGURE_DPI, gridspec_kw={'wspace': 0.5, 'hspace': 0.6})
+    plt.subplots_adjust(top=0.8, bottom=0.1, left=0.08, right=0.95)
+    rng = np.random.default_rng(100)
+
+    model_label = {
+        "static_meta": "Static",
+        "rnn": "Dynamical",
+        "rnn_predictive": "Predictive",
+        "tuned": "Tuned"
+    }
+
+    _labelsize = 6
+
+    for i, (param, metric, other_param, other_param_val, result) in enumerate([
+        ("Learning_Rate", "AUPR", "Weight_Decay", 1e-7, True),
+        ("Learning_Rate", "R2_validation", "Weight_Decay", 1e-7, True),
+        ("Learning_Rate", list(map(str, range(1, 201))), "Weight_Decay", 1e-7, False),
+        ("Weight_Decay", "AUPR", "Learning_Rate", 5e-5, True),
+        ("Weight_Decay", "R2_validation", "Learning_Rate", 5e-5, True),
+        ("Weight_Decay", list(map(str, range(1, 201))), "Learning_Rate", 5e-5, False)
+    ]):
+        for j, model in enumerate(['static_meta', 'rnn', 'rnn_predictive', 'tuned']):
+
+            if result:
+
+                plot_results(
+                    supirfactor_results.loc[
+                        get_plot_idx(
+                            supirfactor_results,
+                            model,
+                            other_param,
+                            other_param_val,
+                            time='rapa'
+                        ),
+                        :
+                    ].copy(),
+                    metric,
+                    param,
+                    axd[j, i]
+                )
+
+            else:
+
+                plot_losses(
+                    supirfactor_losses.loc[
+                        get_plot_idx(
+                            supirfactor_losses,
+                            model,
+                            other_param,
+                            other_param_val,
+                            time='rapa'
+                        ),
+                        :
+                    ].copy(),
+                    metric,
+                    param,
+                    axd[j, i],
+                    tuned=model == 'tuned'
+                )
+
+            if i == 0:
+                axd[j, i].set_title(chr(66 + j), loc='left', weight='bold', size=10, x=-0.25)           
+
+    ax_lr = fig.add_axes([0.02, 0.02, 0.48, 0.88], zorder=-3)
+    ax_wd = fig.add_axes([0.51, 0.02, 0.45, 0.88], zorder=-3)
+    ax_schema = fig.add_axes([0.08, 0.92, 0.35, 0.08])
+    ax_schema.imshow(plt.imread(str(SchematicFile("Deep_Learning_Training.png"))), aspect='equal')
+    ax_schema.set_title("A", loc='left', weight='bold', size=10, x=-0.07, y=0.7)
+    ax_schema.axis('off')
+
+    ax_lr.add_patch(patches.Rectangle((0, 0), 1, 1, color='lavender'))
+    ax_lr.annotate("Learning Rate ($\gamma$)", xy=(0.02, 0.97), xycoords='axes fraction', size=10, weight='bold')
+    ax_lr.annotate("($\lambda$ = 1e-7)", xy=(0.02, 0.95), xycoords='axes fraction', size=8, weight='bold')
+    ax_lr.annotate("Static", xy=(0.001, 0.79), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.annotate("Dynamical", xy=(0.001, 0.55), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.annotate("Predictive", xy=(0.001, 0.32), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.annotate("Tuned", xy=(0.001, 0.13), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.axis('off')
+
+    ax_wd.add_patch(patches.Rectangle((0, 0), 1, 1, color='mistyrose'))
+    ax_wd.annotate("Weight Decay ($\lambda$)", xy=(0.02, 0.97), xycoords='axes fraction', size=10, weight='bold')
+    ax_wd.annotate("($\gamma$ = 5e-5)", xy=(0.02, 0.95), xycoords='axes fraction', size=8, weight='bold')
+    ax_wd.axis('off')
+
+    if save:
+        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME +"_2.png", facecolor="white")
+        
+    return fig
+    
+
+def figure_3_supplement_3_plot(supirfactor_results, supirfactor_losses, save=True):
+   
+    fig_refs = {}
+    fig, axd = plt.subplots(4, 6, figsize=(8, 8), dpi=MAIN_FIGURE_DPI, gridspec_kw={'wspace': 0.5, 'hspace': 0.6})
+    plt.subplots_adjust(top=0.9, bottom=0.1, left=0.08, right=0.95)
+    rng = np.random.default_rng(100)
+
+    for j, model in enumerate(['rnn', 'rnn_predictive', 'tuned']):
+        for i, (param, metric, other_param, other_param_val, result) in enumerate([
+            ("Learning_Rate", "AUPR", "Weight_Decay", 1e-7, True),
+            ("Learning_Rate", "R2_validation", "Weight_Decay", 1e-7, True),
+            ("Learning_Rate", list(map(str, range(1, 201))), "Weight_Decay", 1e-7, False),
+            ("Weight_Decay", "AUPR", "Learning_Rate", 5e-5, True),
+            ("Weight_Decay", "R2_validation", "Learning_Rate", 5e-5, True),
+            ("Weight_Decay", list(map(str, range(1, 201))), "Learning_Rate", 5e-5, False)
+        ]):
+
+            if result:
+
+                plot_results(
+                    supirfactor_results.loc[
+                        get_plot_idx(
+                            supirfactor_results,
+                            model,
+                            other_param,
+                            other_param_val,
+                            time='cc'
+                        ),
+                        :
+                    ].copy(),
+                    metric,
+                    param,
+                    axd[j, i]
+                )
+
+            else:
+
+                plot_losses(
+                    supirfactor_losses.loc[
+                        get_plot_idx(
+                            supirfactor_losses,
+                            model,
+                            other_param,
+                            other_param_val,
+                            time='cc'
+                        ),
+                        :
+                    ].copy(),
+                    metric,
+                    param,
+                    axd[j, i]
+                )
+
+            if i == 0:
+                axd[j, i].set_title(chr(65 + j), loc='left', weight='bold', size=10, x=-0.25)   
+
+    axd[3, 0].set_title("D", loc='left', weight='bold', size=10, x=-0.25)              
+    for j, model in enumerate(['rnn', 'rnn_predictive', 'tuned']):
+        for i, (param, metric, other_param, other_param_val, result) in enumerate([
+            ("Learning_Rate", "AUPR", "Weight_Decay", 1e-7, True),
+            ("Weight_Decay", "AUPR", "Learning_Rate", 5e-5, True),
+        ]):
+
+            plot_results(
+                supirfactor_results.loc[
+                    get_plot_idx(
+                        supirfactor_results,
+                        model,
+                        other_param,
+                        other_param_val,
+                        time='combined'
+                    ),
+                    :
+                ].copy(),
+                metric,
+                param,
+                axd[3, j + i * 3]
+            )
+
+            axd[3, j + i * 3].set_title(model_labels[model], weight='bold', size=8)
+
+    ax_lr = fig.add_axes([0.02, 0.05, 0.48, 0.93], zorder=-3)
+    ax_wd = fig.add_axes([0.51, 0.05, 0.45, 0.93], zorder=-3)
+    ax_comb = fig.add_axes([0.01, 0.04, 0.96, 0.23], zorder=-2)
+
+    ax_comb.add_patch(patches.Rectangle((0, 0), 1, 1, color='slategray', alpha=0.4))
+    ax_comb.axis('off')
+    ax_comb.annotate("Combined AUPR", xy=(0.011, 0.22), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+
+    ax_lr.add_patch(patches.Rectangle((0, 0), 1, 1, color='lavender'))
+    ax_lr.annotate("Learning Rate ($\gamma$)", xy=(0.02, 0.97), xycoords='axes fraction', size=10, weight='bold')
+    ax_lr.annotate("($\lambda$ = 1e-7)", xy=(0.02, 0.95), xycoords='axes fraction', size=8, weight='bold')
+    ax_lr.annotate("Dynamical", xy=(0.001, 0.79), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.annotate("Predictive", xy=(0.001, 0.56), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.annotate("Tuned", xy=(0.001, 0.34), xycoords='axes fraction', size=10, weight='bold', rotation=90)
+    ax_lr.axis('off')
+
+    ax_wd.add_patch(patches.Rectangle((0, 0), 1, 1, color='mistyrose'))
+    ax_wd.annotate("Weight Decay ($\lambda$)", xy=(0.02, 0.97), xycoords='axes fraction', size=10, weight='bold')
+    ax_wd.annotate("($\gamma$ = 5e-5)", xy=(0.02, 0.95), xycoords='axes fraction', size=8, weight='bold')
+    ax_wd.axis('off')
+
+    if save:
+        fig.savefig(FIGURE_3_SUPPLEMENTAL_FILE_NAME +"_3.png", facecolor="white")
 
     return fig

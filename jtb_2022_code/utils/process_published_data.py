@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import fsspec
 
 from ..figure_constants import *
 
@@ -13,17 +12,13 @@ def process_all_decay_links(genes):
                       for x in DECAY_CONSTANT_LINKS.keys()],
                      axis=1)
 
+
 def _process_link(genes, dataset):
-        
-    file_type, gene_col, hl_col, engine = DECAY_CONSTANT_FILES[dataset]
+            
+    file_type, gene_col, hl_col, _ = DECAY_CONSTANT_FILES[dataset]
     
-    with fsspec.open(DECAY_CONSTANT_LINKS[dataset], client_kwargs = {'headers': {'User-Agent': CHROME_USERAGENT}}) as f:
-        if file_type == 'tsv':
-            df = pd.read_csv(f, sep="\t", index_col=0 if gene_col == "X1" else None)
-        elif file_type == 'excel':
-            df = pd.read_excel(f, engine=engine)
-        else:
-            raise ValueError("Bad file_type")
+    f = str(DataFile(f"{dataset}.{file_type}"))
+    df = pd.read_csv(f, sep="\t", index_col=0 if gene_col == "X1" else None)
     
     df, hl_col = _process_df_hl(df, genes, gene_col, hl_col)
     df.rename({hl_col: dataset}, axis=1, inplace=True)

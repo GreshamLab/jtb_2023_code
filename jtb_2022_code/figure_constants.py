@@ -35,39 +35,16 @@ RAPA_SINGLE_CELL_DENOISED_BY_EXPT = str(ScratchFile("2021_RAPA_DENOISED_FIGS_{e}
 INFERELATOR_DATA_FILE = str(ScratchFile("2021_INFERELATOR_DATA.h5ad"))
 INFERELATOR_PRIORS_FILE = str(DataFile("JOINT_PRIOR_20230701.tsv.gz"))
 INFERELATOR_TF_NAMES_FILE = str(ScratchFile("tf_names_yeastract.txt"))
-INFERELATOR_GOLD_STANDARD_FILE = str(ScratchFile("tf_names_yeastract.txt"))
-INFERELATOR_RESULTS_FILE = str(DataFile("2021_RAPA_Inferelator_Results.tsv"))
 
 # Model files
-SUPIRFACTOR_COUNT_MODEL = str(ModelFile("COUNT_DROPOUT_RNN_MODEL.h5"))
-SUPIRFACTOR_VELOCITY_STATIC_MODEL = str(ModelFile("VELOCITY_DROPOUT_STATIC_MODEL.h5"))
+SUPIRFACTOR_COUNT_MODEL = str(ModelFile("RAPA_COUNT_RNN_MODEL.h5"))
+SUPIRFACTOR_VELOCITY_STATIC_MODEL = str(ModelFile("RAPA_VELOCITY_STATIC_MODEL.h5"))
+SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL = str(ModelFile("RAPA_VELOCITY_RNN_MODEL.h5"))
+SUPIRFACTOR_DECAY_MODEL = str(ModelFile("RAPA_DECAY_MODEL.h5"))
+SUPIRFACTOR_BIOPHYSICAL_MODEL = str(ModelFile("RAPA_TUNED_CONSTRAINED_JOINT_BIOPHYSICAL_MODEL.h5"))
 
-# Latent TSV files
-EXPRESSION_TSV_FILES = {
-    'expression': str(ScratchFile("2021_RAPA_EXPRESSION.tsv.gz")),
-    'denoised': str(ScratchFile("2021_RAPA_DENOISED.tsv.gz")),
-    'velocity': str(ScratchFile("2021_RAPA_VELOCITY.tsv.gz"))
-}
-
-LATENT_DATA_FILES = {
-    'tfa_expression': str(ScratchFile("2021_RAPA_TFA_EXPRESSION.tsv.gz")),
-    'tfa_denoised': str(ScratchFile("2021_RAPA_TFA_DENOISED.tsv.gz")),
-    'tfa_velocity': str(ScratchFile("2021_RAPA_TFA_VELOCITY.tsv.gz")),
-    'tfa_decay_constant': str(ScratchFile("2021_RAPA_TFA_DECAY_20MIN.tsv.gz")),
-    'tfa_decay_latent': str(ScratchFile("2021_RAPA_TFA_DECAY_LATENT.tsv.gz")),
-}
-
-TFA_FILE = str(ScratchFile("2021_RAPA_TFA.h5ad"))
-
-METADATA_DATA_FILES = {
-    'metadata': str(ScratchFile("2021_RAPA_METADATA.tsv.gz")),
-    'gene_metadata': str(ScratchFile("2021_RAPA_GENE_METADATA.tsv.gz"))
-}
-
-AGGREGATE_DATA_FILES = {
-    "rapamycin": str(ScratchFile("2021_RAPA_AGGREGATE_RAPAMYCIN.tsv.gz")),
-    "cell_cycle": str(ScratchFile("2021_RAPA_AGGREGATE_CELL_CYCLE.tsv.gz"))
-}
+MODEL_RESULTS_FILE = str(DataFile("SUPIRFACTOR_RESULTS_ALL.tsv"))
+MODEL_LOSSES_FILE = str(DataFile("SUPIRFACTOR_LOSSES_ALL.tsv"))
 
 # Pseudotime TSV files keyed by (method, is_dewakss), value (file name, has_index)
 PSEUDOTIME_FILES = {
@@ -86,15 +63,15 @@ PSEUDOTIME_FILES = {
 DECAY_CONSTANT_FILES = {
     'Neymotin2014': ('tsv', "Syst", "thalf", None),
     'Chan2018': ('tsv', "gene_id", ["halflife_160412_r1", "halflife_160412_r2"], None),
-    'Geisberg2015': ('excel', "systematic name", "Half-Life           (in minutes)", 'openpyxl'),
-    'Munchel2011': ('excel', "Systematic Name", "Half-life [min]", 'xlrd'),
+    'Geisberg2014': ('tsv', "systematic_name", "halflife", None),
+    'Munchel2011': ('tsv', "Systematic Name", "Half-life [min]", None),
     'Miller2011': ('tsv', "X1", "wt", None)
 }
-                        
+                   
 DECAY_CONSTANT_LINKS = {
     'Neymotin2014': "https://rnajournal.cshlp.org/content/suppl/2014/08/08/rna.045104.114.DC1/TableS5.xls",
     'Chan2018': "https://cdn.elifesciences.org/articles/32536/elife-32536-fig1-data2-v4.txt",
-    'Geisberg2015': "https://www.cell.com/cms/10.1016/j.cell.2013.12.026/attachment/5d358c57-4ca0-4216-be37-3cc5c909b375/mmc1.xlsx",
+    'Geisberg2014': "https://www.cell.com/cms/10.1016/j.cell.2013.12.026/attachment/5d358c57-4ca0-4216-be37-3cc5c909b375/mmc1.xlsx",
     'Munchel2011': "https://www.molbiolcell.org/doi/suppl/10.1091/mbc.e11-01-0028/suppl_file/mc-e11-01-0028-s10.xls",
     'Miller2011': "https://www.embopress.org/action/downloadSupplement?doi=10.1038%2Fmsb.2010.112&file=msb2010112-sup-0001.txt"
 }
@@ -135,6 +112,8 @@ FIG_CC_LEGEND_FILE_NAME = str(SchematicFile("Figure_CC_Legend.png"))
 FIG_RAPA_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_RAPA_Legend_Vertical.png"))
 FIG_CC_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_CC_Legend_Vertical.png"))
 FIG_EXPT_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_EXPT_Legend_Vertical.png"))
+FIG_DEEP_LEARNING_FILE_NAME = str(SchematicFile("Deep_Learning_Model.png"))
+FIG_DYNAMICAL_FILE_NAME = str(SchematicFile("Dynamical_Model.png"))
 
 # Color Palettes for Categorical Data
 POOL_PALETTE = "YlGnBu"
@@ -156,8 +135,9 @@ FIGURE_2_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_2"))
 FIGURE_3_FILE_NAME = str(FigureFile("Figure_3"))
 FIGURE_3_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_3"))
 FIGURE_4_FILE_NAME = str(FigureFile("Figure_4"))
-FIGURE_4_1_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4_1"))
+FIGURE_4_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4"))
 FIGURE_5_FILE_NAME = str(FigureFile("Figure_5"))
+FIGURE_5_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_5"))
 FIGURE_6_FILE_NAME = str(FigureFile("Figure_6"))
 
 # Search space for grid searches
@@ -171,6 +151,7 @@ FIGURE_1A_LFC_THRESHOLD = _np.log2(1.25)
 FIGURE_1A_PADJ_THRESHOLD = 0.01
 
 ### TIME CONSTANTS ###
+CC_LENGTH_DATA_FILE = str(DataFile("Supplemental_Growth_Curve_FY45.tsv"))
 CC_LENGTH = 88
 
 ### SELECT GENES FOR FIGURES ###
@@ -179,15 +160,7 @@ FIGURE_5_GENES = ["YGR109C", "YNR009W", "YIL131C", "YPR119W"]
 
 # FROM SPELLMAN98 #
 # ADJUSTED TO 88 MIN #
-#CC_TIME_ORDER = {
-#    'M-G1': ('G1', 61.6, 79.2),
-#    'G1': ('S', 79.2, 96.8),
-#    'S': ('G2', 8.8, 26.4),
-#    'G2': ('M', 26.4, 44), 
-#    'M': ('M-G1', 44, 61.6)
-#}
 
-# [10, 30, 19, 10, 19]
 CC_TIME_ORDER = {
     'M-G1': ('G1', 7, 22.5),
     'G1': ('S', 22.5, 39.5),

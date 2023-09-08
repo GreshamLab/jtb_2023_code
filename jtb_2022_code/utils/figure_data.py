@@ -26,9 +26,7 @@ class FigureSingleCellData:
     _all_data = None
     _expt_data = None
     _expt_keys = None
-    
-    _gene_names = None
-    
+        
     _pseudotime_rho = None
     _max_pseudotime_rho = None
        
@@ -162,9 +160,7 @@ class FigureSingleCellData:
                 n_counts = int(self.all_data.obs['n_counts'].median())
             )
             self.save()
-            
-        self._gene_names = self._all_data.var.loc[:, "CommonName"]
-    
+                
     def _unload(self):
         
         del self._all_data
@@ -608,15 +604,11 @@ class FigureSingleCellData:
         _add_broad_category(adata)
         
         return adata
+    
+    @staticmethod
+    def gene_common_name(gene_symbol):
         
-    def gene_common_name(self, gene_symbol):
-        
-        if self._gene_names is None:
-            return None
-        elif gene_symbol in self._gene_names.index:
-            return self._gene_names.loc[gene_symbol]
-        else:
-            return gene_symbol
+        return CommonNames.common_name(gene_symbol)
         
     def process_programs(self, recalculate=False):
         
@@ -843,7 +835,32 @@ class FigureSingleCellData:
         
         return adata
 
+class CommonNames:
+    
+    _gene_names = None
+    
+    @classmethod
+    def _load(cls):
+        
+        cls._gene_names = _pd.read_csv(GENE_NAMES_FILE, sep="\t", index_col=0)
+        na_names = _pd.isna(cls._gene_names['Name'])
+        cls._gene_names.loc[na_names, 'Name'] = cls._gene_names.index[na_names].tolist()
+        cls._gene_names = cls._gene_names.astype(str)
+    
+    @classmethod
+    def common_name(cls, gene_symbol):
+        
+        if cls._gene_names is None:
+            cls._load()
+        
+        if gene_symbol in cls._gene_names.index:
+            return cls._gene_names.loc[gene_symbol][0]
+        else:
+            return gene_symbol
 
+def common_name(gene):
+    return CommonNames.common_name(gene)
+        
 def _gene_metadata(adata):
     # Gene common names
     if "CommonName" not in adata.var:

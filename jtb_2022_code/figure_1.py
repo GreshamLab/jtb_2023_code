@@ -4,13 +4,16 @@ import scanpy as sc
 from .utils.figure_common import *
 from .figure_constants import *
 from .utils.figure_data import load_rapa_bulk_data, rapa_bulk_times
-from .utils.Figure_deseq import DESeq2, hclust
+from .utils.Figure_deseq import DESeq2
 
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import pdist
 
 
 def plot_figure_1(sc_data, save=True):
@@ -19,16 +22,27 @@ def plot_figure_1(sc_data, save=True):
     rapa_bulk, rapa_bulk_meta = load_rapa_bulk_data()
 
     print("Running DESeq2")
-    de_obj = DESeq2(rapa_bulk, rapa_bulk_meta, "~Time", threads=4).run(fitType = "local", quiet=True)
+    de_obj = DESeq2(
+        rapa_bulk.reset_index(drop=True),
+        rapa_bulk_meta.reset_index(drop=True),
+        "~Time",
+        threads=4
+    ).run(fitType = "local", quiet=True)
 
     print("Processing Results")
-    res = de_obj.multiresults(lambda y: ("Time", y, "0.0"), rapa_bulk_times(), "Time", lfcThreshold=FIGURE_1A_LFC_THRESHOLD)
+    res = de_obj.multiresults(
+        lambda y: ("Time", y, "0.0"),
+        rapa_bulk_times(),
+        "Time",
+        lfcThreshold=FIGURE_1A_LFC_THRESHOLD
+    )
     plot_genes = res.loc[res['padj'] < FIGURE_1A_PADJ_THRESHOLD, :].index.unique()
-    plot_genes = res.loc[res.index.isin(plot_genes), :].pivot(columns="Time", values="log2FoldChange").reindex(rapa_bulk_times(include_0=True), axis=1).fillna(0)
+    plot_genes = res.loc[res.index.isin(plot_genes), :].pivot(
+        columns="Time", values="log2FoldChange"
+    ).reindex(rapa_bulk_times(include_0=True), axis=1).fillna(0)
 
     print("Clustering Results")
-    plot_hclust = hclust(plot_genes)
-    plot_y_order = plot_hclust['labels'][plot_hclust['order'] - 1]
+    plot_y_order = cluster_on_rows(plot_genes)
     plot_genes = plot_genes.reindex(plot_y_order, axis=0)
 
     plot_x_labels = list(map(str, map(int, map(float, rapa_bulk_times(include_0=True)))))
@@ -52,7 +66,7 @@ def plot_figure_1(sc_data, save=True):
     # PLOT HEATMAP #
     fig_refs.update(
         _draw_bulk_heatmap(
-            squeeze_data(plot_genes, FIGURE_1A_MINMAX),
+            plot_genes,
             axd['hm'],
             cbar_ax=axd['hm_cbar'],
             cbar_label="Log${}_2$ FC",
@@ -71,25 +85,22 @@ def plot_figure_1(sc_data, save=True):
     axd['image'].set_title("B", loc='left', weight='bold')
 
     # DRAW UMAPS #
-    fig_refs['umap_1'] = sc.pl.umap(
+    fig_refs['umap_1'] = plot_umap(
         sc_data.all_data,
-        ax=axd['umap_1'],
+        axd['umap_1'],
         color="Pool",
         palette=pool_palette(),
-        show=False,
         alpha=0.2,
-        size=2,
-        legend_loc='none'
+        size=1
     )
-    fig_refs['umap_2'] = sc.pl.umap(
+
+    fig_refs['umap_2'] = plot_umap(
         sc_data.all_data,
-        ax=axd['umap_2'],
+        axd['umap_2'],
         color="Experiment",
         palette=expt_palette(),
-        show=False,
         alpha=0.2,
-        size=2,
-        legend_loc='none'
+        size=1
     )
 
     axd['umap_1'].set_title("Collection Time", size=8)
@@ -141,7 +152,9 @@ def _draw_bulk_heatmap(
         heatmap_data,
         cmap='bwr',
         aspect='auto',
-        interpolation='nearest'
+        interpolation='nearest',
+        vmin=-1 * FIGURE_1A_MINMAX,
+        vmax=FIGURE_1A_MINMAX
     )
 
     if cbar_ax is None:  

@@ -11,6 +11,21 @@ from ..figure_constants import *
 from ..utils.figure_data import _gene_metadata, _call_cc
 from ..utils.dewakss_common import run_dewakss
 
+TF_LOOKUP = {
+    "WT(ho)": None,
+    "gln3": "YER040W",
+    "gat1": "YFL021W",
+    "gzf3": "YJL110C",
+    "rtg1": "YOL067C",
+    "rtg3": "YBL103C",
+    "stp1": "YDR463W",
+    "stp3": "YHR006W",
+    "dal80": "YKR034W",
+    "dal81": "YIR023W",
+    "dal82": "YNL314W",
+    "gcn4": "YEL009C"
+}
+
 class OldElifeData:
     
     data = None

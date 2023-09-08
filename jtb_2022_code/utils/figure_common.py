@@ -10,6 +10,9 @@ import matplotlib.cm as _cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from seaborn.matrix import dendrogram as _sns_dendrogram
 
+from scipy.cluster.hierarchy import linkage, dendrogram
+from scipy.spatial.distance import pdist, squareform
+
 from ..figure_constants import *
 
 
@@ -157,6 +160,51 @@ def plot_heatmap(
         
     return refs
 
+def plot_umap(
+    adata,
+    ax,
+    alpha=1,
+    size=1,
+    color=None,
+    palette=None,
+    cmap=None,
+    seed=5000,
+    **kwargs
+):
+    
+    rng = _np.random.default_rng(seed)
+    overplot = _np.arange(adata.shape[0])
+    rng.shuffle(overplot)
+    
+    if palette is not None:
+        codes, uniques = _pd.factorize(adata.obs[color])
+        colors = _np.array(palette)[codes][overplot]
+        c = None
+    elif color is not None:
+        colors = None
+        c = adata.obs[color].values[overplot]
+    else:
+        colors = None
+        c = None
+
+    ref = ax.scatter(
+        adata.obsm['X_umap'][overplot, 0],
+        adata.obsm['X_umap'][overplot, 1],
+        color=colors,
+        c=c,
+        alpha=alpha,
+        s=size,
+        cmap=cmap,
+        **kwargs
+    )
+    
+    ax.set_xticks([],[])
+    ax.set_yticks([],[])
+    ax.set_xlabel("UMAP1", size=8)
+    ax.set_ylabel("UMAP2", size=8)
+    
+    return ref
+
 def velocity_axes(ax):
     ax.spines['left'].set_position(('axes', 0.0))
     ax.spines['right'].set_color('none')
@@ -166,3 +214,131 @@ def velocity_axes(ax):
 def ticks_off(ax):
     ax.set_yticks([], [])
     ax.set_xticks([], [])
+
+def shift_axis(ax, x=None, y=None):
+    
+    _p = ax.get_position()
+    
+    if x is not None:
+        _p.x0 += x
+        _p.x1 += x
+    if y is not None:
+        _p.y0 += y
+        _p.y1 += y
+
+    ax.set_position(_p)
+
+def cluster_on_rows(dataframe, **kwargs):
+                    
+    return dataframe.index[dendrogram(
+        linkage(
+            pdist(
+                dataframe.values,
+                **kwargs
+            ),
+            method='ward'
+        ),
+        no_plot=True
+    )['leaves']]
+
+def plot_stacked_barplot(dataframe, ax, stack_order, palette=None):
+    
+    ref = {}
+    
+    _bottoms = _np.zeros(dataframe.shape[0])
+    _x = _np.arange(dataframe.shape[0])
+    
+    for c, cc in enumerate(stack_order):
+        
+        _cat_data = dataframe[cc].values
+        _cat_color = palette[c] if palette is not None else None
+        
+        ref[cc] = ax.bar(
+            _x,
+            _cat_data,
+            label=cc,
+            bottom=_bottoms,
+            color=_cat_color
+        )
+        
+        _bottoms += _cat_data
+        
+    return ref
+
+def symmetric_ylim(ax, integer=False, one_decimal=True, lim_max=None):
+    
+    _comp_ylim = max(map(abs, ax.get_ylim()))
+    _comp_ylim = max(_comp_ylim, 0.1)
+    
+    if lim_max is not None:
+        _comp_ylim = min(_comp_ylim, lim_max)
+
+    if one_decimal:
+        _tick = int(_comp_ylim * 10) / 10
+    elif integer:
+        _tick = int(_comp_ylim)
+    
+    ax.set_ylim(-1 * _comp_ylim, _comp_ylim)
+    ax.set_yticks([-1 * _tick, 0, _tick], [-1 * _tick, 0, _tick], size=8)
+
+def align_ylim(ax, ax2):
+    
+    ax2.set_ylim(*ax.get_ylim())
+    ax2.set_yticks(ax.get_yticks(), ax.get_yticks(), size=8)
+
+def plot_correlations(
+    x,
+    ax,
+    plot_index=None,
+    cmap='bwr',
+    vmin=-1,
+    vmax=1,
+    cat_ax=None,
+    cat_cmap=None,
+    cat_var=None
+):
+    
+    _corr = _np.corrcoef(x.T)
+    _corr_finite = ~_np.all(_np.isnan(_corr), axis=0)
+    _corr = _corr[_corr_finite, :][:, _corr_finite]
+    
+    if plot_index is None:
+        _corr_idx = dendrogram(
+            linkage(
+                squareform(1 - _corr, checks=False),
+                method='average'
+            ),
+            no_plot=True
+        )['leaves']
+    else:
+        _corr_idx = plot_index
+    
+    ref = ax.pcolormesh(
+        _np.tril(_corr[_corr_idx, :][:, _corr_idx])[::-1, :],
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax
+    )
+
+    ax.set_xticks([], [])
+    ax.set_yticks([], [])
+
+    ax.spines['right'].set_color('none')
+    ax.spines['top'].set_color('none')
+
+    if cat_ax is not None:
+        cat_ax.pcolormesh(
+            cat_var[_corr_finite][_corr_idx].reshape(-1, 1)[::-1, :],
+            cmap=cat_cmap
+        )
+        _cat_col_axis(cat_ax)
+        
+    return ref, _corr_idx
+
+def _cat_col_axis(ax):
+    ax.invert_yaxis()
+    ax.set_yticks([])
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.set_xticks([0.5], []) 

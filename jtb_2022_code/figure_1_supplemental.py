@@ -10,7 +10,7 @@ import pandas as pd
 import scanpy as sc
 import scipy as sp
 
-from jtb_2022_code.utils.Figure_deseq import DESeq2, hclust
+from jtb_2022_code.utils.Figure_deseq import DESeq2
 from jtb_2022_code.figure_constants import *
 from jtb_2022_code.utils.figure_common import *
 from jtb_2022_code.utils.figure_data import sum_for_pseudobulk, calc_group_props
@@ -40,60 +40,122 @@ supp_1_2_panel_labels = {'hm': "A",
                          'pr': "C"}
 
 
-def _get_hm_data(m_dict, add_spacer=True):
+def _mean_by_pool(adata, lfc_threshold=None):
     
-    hm_spacer = pd.Series(0.0, index=m_dict[1, "WT"].index, name=9)
-    return pd.concat((pd.concat((m_dict[(i, g)], hm_spacer), axis=1) if add_spacer else m_dict[(i, g)]
-                     for g in ["WT", "fpr1"] for i in [1, 2]), axis=1)
+    _counts = adata.layers['counts']
+    _umi = _counts.sum(axis=1).A1 / 3099
+    _counts /= _umi[:, None]
+    
+    _mean_expression = pd.DataFrame(
+        np.vstack(
+            [
+                _counts[adata.obs['Pool'] == i, :].mean(axis=0).A1
+                for i in range(1, 9)
+            ]
+        ),
+        columns=adata.var_names
+    )
 
+    _mean_expression = _mean_expression.loc[:, np.all(_mean_expression != 0, axis=0)]
+    _mean_expression /= _mean_expression.iloc[0, :]
+    _mean_expression = np.log2(_mean_expression)
+    
+    if lfc_threshold is not None:
+        _mean_expression = _mean_expression.loc[:, np.any(np.abs(_mean_expression) > lfc_threshold, axis=0)]
 
-def _get_cc_bar_data(data, add_spacer=True):
-    cc_props = []
-    cc_spacer = pd.Series([0.0] * len(CC_COLS), index=pd.MultiIndex.from_product([[9], CC_COLS]))
+    return _mean_expression
 
-    for g in ["WT", "fpr1"]:
-        for i in [1, 2]:
-            cc_counts = data.expt_data[(i, g)].obs[['CC', 'Pool']].value_counts().reindex(CC_COLS, level=0)
-            pool_counts = data.expt_data[(i, g)].obs[['Pool']].value_counts()
-            cc_counts = cc_counts.divide(pool_counts)
+def _get_cc_bar_data(adata):
+
+    cc_counts = adata.obs[['CC', 'Pool']].value_counts().reindex(CC_COLS, level=0)
+    pool_counts = adata.obs[['Pool']].value_counts()
+    cc_counts = cc_counts.divide(pool_counts)
             
-            if add_spacer:
-                cc_counts = pd.concat((cc_counts, cc_spacer))
-        
-            cc_props.append(cc_counts)
-                        
-    return pd.concat(cc_props, axis=1)
-            
+    return cc_counts.reset_index().pivot(
+        index='Pool',
+        columns='CC',
+        values='count'
+    )
 
-def _get_prop_bar_data(data, add_spacer=True):
-    gene_props = []
-    gene_spacer = pd.DataFrame([[0.0] * len(GENE_CAT_COLS)], columns=GENE_CAT_COLS, index=[9])
-    for g in ["WT", "fpr1"]:
-        for i in [1, 2]:
-            pr_median = data.expt_data[(i, g)].obs[GENE_CAT_COLS + ['Pool']].groupby('Pool').agg('median')
-            pr_median = pr_median.divide(pr_median.sum(axis=1), axis=0)
-            pr_median = pd.concat((pr_median, gene_spacer))
-            gene_props.append(pr_median)
-    return pd.concat(gene_props, axis=1)
-
-def _add_avlines(ax, locs, **kwargs):
-    for l in locs:
-        ax.axvline(l, **kwargs)
+def _get_prop_bar_data(adata, counts=True):
+    
+    if counts:
+        _counts = pd.DataFrame({
+            c: adata.layers['counts'][:, adata.var[c]].sum(axis=1).A1
+            for c in GENE_CAT_COLS
+        })
+        _counts["Pool"] = adata.obs['Pool'].values
+        return _counts.groupby("Pool").agg('mean')
+    
+    else:
+        return adata.obs[GENE_CAT_COLS + ['Pool']].groupby('Pool').agg('median')
 
 
 def figure_1_supplement_1_plot(data, save=True):
 
     fig_refs = {}
 
-    fig, axd = plt.subplot_mosaic([['ncells', 'ncells'],
-                                   ['ncounts', 'ncounts'],
-                                   ['umap_1', 'umap_2'],
-                                   ['umap_3', 'umap_4'],
-                                   ['umap_5', 'umap_6']],
-                                  gridspec_kw=dict(width_ratios=[1, 1], 
-                                                   height_ratios=[0.5, 0.5, 1, 1, 1]), 
-                                  figsize=(8, 9), dpi=300)
-                                  #constrained_layout=True)
+    fig = plt.figure(figsize=(5, 8), dpi=MAIN_FIGURE_DPI)
+
+    axd = {
+        'ncells': fig.add_axes([0.1, 0.875, 0.7, 0.1]),
+        'ncounts': fig.add_axes([0.1, 0.725, 0.7, 0.1]),
+        'legend_a': fig.add_axes([0.81, 0.725, 0.13, 0.25]),
+        'umap_1': fig.add_axes([0.05, 0.5, 0.30, 0.175]),
+        'umap_2': fig.add_axes([0.55, 0.5, 0.30, 0.175]),
+        'umap_3': fig.add_axes([0.05, 0.275, 0.30, 0.175]),
+        'umap_4': fig.add_axes([0.55, 0.275, 0.30, 0.175]),
+        'umap_5': fig.add_axes([0.05, 0.05, 0.30, 0.175]),
+        'umap_6': fig.add_axes([0.55, 0.05, 0.30, 0.175]),
+        'umap_1_legend': fig.add_axes([0.35, 0.5, 0.1, 0.175]),    
+        'umap_2_legend': fig.add_axes([0.85, 0.5, 0.1, 0.175]),
+        'umap_3_legend': fig.add_axes([0.35, 0.275, 0.1, 0.175]),    
+        'umap_4_legend': fig.add_axes([0.86, 0.275, 0.025, 0.175]),
+        'umap_5_legend': fig.add_axes([0.36, 0.05, 0.025, 0.175]),    
+        'umap_6_legend': fig.add_axes([0.86, 0.05, 0.025, 0.175]),
+    }
+
+    axd['umap_1_legend'].legend(
+        title="Time (Pool)",
+        handles=[patches.Patch(color=hexcolor) for hexcolor in pool_palette()],
+        labels=[str(x) for x in range(1, 9)],
+        frameon=False,
+        loc='center left',
+        fontsize=8,
+        title_fontsize=8,
+        handlelength=1,
+        handleheight=1,
+        borderaxespad=0
+    )
+
+    axd['umap_2_legend'].legend(
+        title="Phase",
+        handles=[patches.Patch(color=hexcolor) for hexcolor in cc_palette()],
+        labels=["G1/M", "G1", "S", "G2", "M"],
+        frameon=False,
+        loc='center left',
+        fontsize=8,
+        title_fontsize=8,
+        handlelength=1,
+        handleheight=1,
+        borderaxespad=0
+    )
+
+    axd['umap_3_legend'].legend(
+        title="Genotype",
+        handles=[patches.Patch(color=hexcolor) for hexcolor in strain_palette()],
+        labels=["WT", "fpr1"],
+        frameon=False,
+        loc='center left',
+        fontsize=8,
+        title_fontsize=8,
+        handlelength=1,
+        handleheight=1,
+        borderaxespad=0
+    )
+    axd['umap_1_legend'].axis('off')
+    axd['umap_2_legend'].axis('off')
+    axd['umap_3_legend'].axis('off')
 
     ### PANEL A ###
 
@@ -118,12 +180,16 @@ def figure_1_supplement_1_plot(data, save=True):
 
     axd['ncells'].set_xticks(np.arange(8), labels=np.arange(8) + 1)
 
-    fig_refs['ncells_lax'] = add_legend_axis(axd['ncells'], size='10%')
-    fig_refs['ncells_legend'] = fig_refs['ncells_lax'].legend(title="Expt. Rep.",
-                                                              handles=[patches.Patch(color=hexcolor) for hexcolor in expt_palette(long=True)],
-                                                              labels=['1 [WT]', '2 [WT]', '1 [fpr1]', '2 [fpr1]'],
-                                                              frameon=False,
-                                                              loc='center left')
+    fig_refs['ncells_legend'] = axd['legend_a'].legend(
+        title="Expt. Rep.",
+        handles=[patches.Patch(color=hexcolor) for hexcolor in expt_palette(long=True)],
+        labels=['1 [WT]', '2 [WT]', '1 [fpr1]', '2 [fpr1]'],
+        frameon=False,
+        loc='center left',
+        fontsize=8,
+        title_fontsize=8
+    )
+    axd['legend_a'].axis('off')
     ### PANEL B ###
 
     gcols = ['Experiment', 'Gene', 'Pool']
@@ -147,54 +213,86 @@ def figure_1_supplement_1_plot(data, save=True):
     axd['ncounts'].set_xticks(np.arange(8), labels=np.arange(8) + 1)
     axd['ncounts'].set_ylim([0, 10000])
 
-
-    fig_refs['ncounts_lax'] = add_legend_axis(axd['ncounts'], size='10%')
-    fig_refs['ncounts_legend'] = fig_refs['ncounts_lax'].legend(title="Expt. Rep.",
-                                                                handles=[patches.Patch(color=hexcolor) for hexcolor in expt_palette(long=True)],
-                                                                labels=['1 [WT]', '2 [WT]', '1 [fpr1]', '2 [fpr1]'],
-                                                                frameon=False,
-                                                                loc='center left')
-
-    for i, hexcolor in enumerate(expt_palette(long=True)):
-        fig_refs['ncounts_legend'].legendHandles[i].set_color(hexcolor)
-
     ### PANELS C-H ###
 
     umap_adata = ad.AnnData(np.zeros((data.all_data.X.shape[0], 1)), dtype=data.all_data.X.dtype)
     umap_adata.obsm['X_umap'] = data.all_data.obsm['X_umap'].copy()
     umap_adata.obs = data.all_data.obs.copy()
-
-    # Explicitly squeeze data because scanpy's handling of vmin/vmax is dogshit
     umap_adata.obs['Ribosomal'] = umap_adata.obs['RP'] + umap_adata.obs['RiBi']
 
-    umap_adata.obs['n_counts'] = squeeze_data(umap_adata.obs['n_counts'], 10000, 0)
-    umap_adata.obs['Ribosomal'] = squeeze_data(umap_adata.obs['Ribosomal'], 0.6, 0)
-    umap_adata.obs['iESR'] = squeeze_data(umap_adata.obs['iESR'], 0.1, 0)
+    fig_refs['umap_1'] = plot_umap(
+        umap_adata,
+        axd['umap_1'],
+        color="Pool",
+        palette=pool_palette(),
+        alpha=0.2,
+        size=1
+    )
 
-    fig_refs['umap_1'] = sc.pl.umap(umap_adata, ax=axd['umap_1'], color="Pool", palette=pool_palette(), 
-                                    show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
-    fig_refs['umap_1_legend'] = add_legend(add_legend_axis(axd['umap_1']), pool_palette(), umap_adata.obs['Pool'].dtype.categories.values)
-    fig_refs['umap_2'] = sc.pl.umap(umap_adata, ax=axd['umap_2'], color="CC", palette=cc_palette(), 
-                                    show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
-    fig_refs['umap_2_legend'] = add_legend(add_legend_axis(axd['umap_2']), cc_palette(), umap_adata.obs['CC'].dtype.categories.values)
-    fig_refs['umap_3'] = sc.pl.umap(umap_adata, ax=axd['umap_3'], color="Gene", palette=strain_palette(), 
-                                    show=False, alpha=0.25, size=2, sort_order=False, legend_loc='none')
-    fig_refs['umap_3_legend'] = add_legend(add_legend_axis(axd['umap_3']), strain_palette(), umap_adata.obs['Gene'].dtype.categories.values)
-    fig_refs['umap_4'] = sc.pl.umap(umap_adata, ax=axd['umap_4'], color="n_counts", 
-                                    show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
-    #fig_refs['umap_4_cbar'] = plt.colorbar(fig_refs['umap_4'].collections[0], cax=add_legend_axis(axd['umap_4']), pad=0.01, fraction=0.08, aspect=30, use_gridspec=True)
-    fig_refs['umap_5'] = sc.pl.umap(umap_adata, ax=axd['umap_5'], color="Ribosomal", 
-                                    show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
-    #fig_refs['umap_5_cbar'] = plt.colorbar(fig_refs['umap_5'].collections[0], cax=add_legend_axis(axd['umap_5']), pad=0.01, fraction=0.08, aspect=30, use_gridspec=True)
-    fig_refs['umap_6'] = sc.pl.umap(umap_adata, ax=axd['umap_6'], color="iESR", 
-                                    show=False, alpha=0.25, size=2, sort_order=False)#, legend_loc='none')
-    #fig_refs['umap_6_cbar'] = plt.colorbar(fig_refs['umap_6'].collections[0], cax=add_legend_axis(axd['umap_6']), pad=0.01, fraction=0.08, aspect=30, use_gridspec=True)
+    fig_refs['umap_2'] = plot_umap(
+        umap_adata,
+        axd['umap_2'],
+        color="CC",
+        palette=cc_palette(),
+        alpha=0.2,
+        size=1
+    )
+
+    fig_refs['umap_3'] = plot_umap(
+        umap_adata,
+        axd['umap_3'],
+        color="Gene",
+        palette=strain_palette(),
+        alpha=0.2,
+        size=1
+    )
+
+    fig_refs['umap_4'] = plot_umap(
+        umap_adata,
+        axd['umap_4'],
+        color="n_counts",
+        cmap='viridis',
+        alpha=0.2,
+        size=1,
+        vmin=0,
+        vmax=10000
+    )
+
+    fig_refs['umap_5'] = plot_umap(
+        umap_adata,
+        axd['umap_5'],
+        color="Ribosomal",
+        cmap='viridis',
+        alpha=0.2,
+        size=1,
+        vmin=0,
+        vmax=0.6
+    )
+
+    fig_refs['umap_6'] = plot_umap(
+        umap_adata,
+        axd['umap_6'],
+        color="iESR",
+        cmap='viridis',
+        alpha=0.2,
+        size=1,
+        vmin=0,
+        vmax=0.1
+    )
+
+    for i in range(4, 7):
+        fig_refs[f'umap_{i}_cbar'] = plt.colorbar(
+            fig_refs[f'umap_{i}'],
+            cax=axd[f'umap_{i}_legend'],
+        )
+        axd[f'umap_{i}_legend'].tick_params(labelsize=8) 
+        fig_refs[f'umap_{i}_cbar'].solids.set(alpha=1)
 
     for ax_id, label in supp_1_panel_labels.items():
-        axd[ax_id].set_title(supp_1_panel_titles[ax_id])
-        axd[ax_id].set_title(label, loc='left', weight='bold')
+        axd[ax_id].set_title(supp_1_panel_titles[ax_id], size=8)
+        axd[ax_id].set_title(label, loc='left', weight='bold', size=10)
+        axd[ax_id].tick_params(axis='both', which='major', labelsize=8)
 
-    fig.tight_layout()    
 
     if save:
         fig.savefig(FIGURE_1_1_SUPPLEMENTAL_FILE_NAME + ".png", facecolor='white')
@@ -203,127 +301,161 @@ def figure_1_supplement_1_plot(data, save=True):
 
 def figure_1_supplement_2_plot(data, save=True):
 
-    if 'DESeq_Pseudobulk' not in data.expt_data[(1, "WT")].uns:
-        ### DESeq Based on Pseudobulk ###
-        gb, mb = sum_for_pseudobulk(data.all_data, ['Pool', 'Experiment', 'Gene', 'Replicate'])
-
-        results = {}
-
-        for i in [1, 2]:
-            for g in ["WT", "fpr1"]:
-                idx = mb['Experiment'] == str(i)
-                idx &= mb['Gene'] == g
-
-                print(f"Running DESeq2 (Experiment {i}: {g}) on {idx.sum()} observations")
-                de_obj = DESeq2(gb[idx], mb[idx], "~Pool", threads=4).run(fitType = "local", quiet=True)
-                results[(i, g)] = de_obj.multiresults(lambda y: ("Pool", y, "1"), list(map(str, range(2, 9))), "Pool", lfcThreshold=FIGURE_1A_LFC_THRESHOLD)
-
-        plot_genes = results[(1, "WT")].loc[results[(1, "WT")]['padj'] < FIGURE_1A_PADJ_THRESHOLD, :].index.unique()
-        plot_genes = plot_genes.union(results[(2, "WT")].loc[results[(2, "WT")]['padj'] < FIGURE_1A_PADJ_THRESHOLD, :].index.unique())
-
-        plot_matrix = {(i, g): results[(i, g)].loc[results[(i, g)].index.isin(plot_genes), :].pivot(
-            columns="Pool", values="log2FoldChange"
-        ).reindex(
-            list(map(str, range(1, 9))), axis=1
-        ).fillna(0) for i in [1, 2] for g in ["WT", "fpr1"]}
-
-        print("Clustering Results")
-        plot_hclust = hclust(plot_matrix[(1, "WT")])
-        plot_y_order = plot_hclust['labels'][plot_hclust['order'] - 1]
-
-        for k, v in plot_matrix.items():
-            plot_matrix[k] = plot_matrix[k].reindex(plot_y_order, axis=0)
-
-        for k, e_data in data.expt_data.items():
-            e_data.uns['DESeq_Pseudobulk'] = plot_matrix[k]
-            
-        data.save()
-    
-    else:
-        plot_matrix = {k: v.uns['DESeq_Pseudobulk'] for k, v in data.expt_data.items()}
-
-    ### BUILD PLOT ###
     fig_refs = {}
 
-    fig, axd = plt.subplot_mosaic([['hm', 'hm_cbar'],
-                                   ['cc', 'cc_cbar'],
-                                   ['pr', 'pr_cbar']],
-                                  gridspec_kw=dict(width_ratios=[4, 0.1], 
-                                                   height_ratios=[1, 1, 1],
-                                                   wspace=0, hspace=0.01), 
-                                  figsize=(8, 6), dpi=300,
-                                  constrained_layout=True)
+    fig = plt.figure(figsize=(5, 7), dpi=MAIN_FIGURE_DPI)
+    def cluster_on_rows(dataframe, **kwargs):
 
-    ### PANEL A HEATMAP ###
-    fig_refs['hm'] = axd['hm'].imshow(squeeze_data(_get_hm_data(plot_matrix).iloc[:, :-1], FIGURE_1A_MINMAX), 
-                                      cmap='bwr', aspect='auto', interpolation='none')
+        return dataframe.index[dendrogram(
+            linkage(
+                pdist(
+                    dataframe.values,
+                    **kwargs
+                ),
+                method='ward'
+            ),
+            no_plot=True
+        )['leaves']]
 
-    axd['hm'].set_xticks(list(range(0, 9 * 4))[:-1], labels=((list(range(1, 9)) + [""] ) * 4)[:-1])
-    axd['hm'].set_yticks([], labels=[])
-    axd['hm'].set_ylabel("Genes")
-    axd['hm'].set_xlabel("Time [Pool]")
-    axd['hm'].set_title(" " + "           ".join(f"Expt {i}: {g}" for g in ["WT", 'fpr1'] for i in [1, 2]))
-    _add_avlines(axd['hm'], [8, 17, 26], color="black", linewidth=1)
+    _l = 0.13
+    _w = 0.17
+    _h = 0.14
 
-    ### PANEL B CELL CYCLE STACKED BARPLOT ###
-    pool_bottoms = np.zeros(9 * 4)
-    pool_data = _get_cc_bar_data(data)
-    for c, cc in enumerate(CC_COLS[::-1]):
-        pools = pool_data.loc[(slice(None), cc), :].values.T.flatten()
-        fig_refs["cc"] = axd["cc"].bar(list(range(0, 9 * 4)), pools, label=cc, bottom=pool_bottoms, 
-                                       color=cc_palette()[::-1][c])
-        pool_bottoms += pools
+    axd = {
+        'expr_1': fig.add_axes([_l, 0.76, _w, _h]),
+        'expr_2': fig.add_axes([_l + _w, 0.76, _w, _h]),
+        'expr_3': fig.add_axes([_l + 2 * _w, 0.76, _w, _h]),
+        'expr_4': fig.add_axes([_l + 3 * _w, 0.76, _w, _h]),
+        'expr_cbar': fig.add_axes([_l + 4 * _w + 0.01, 0.76, 0.025, _h]),
+        'cc_1': fig.add_axes([_l, 0.54, _w, _h]),
+        'cc_2': fig.add_axes([_l + _w, 0.54, _w, _h]),
+        'cc_3': fig.add_axes([_l + 2 *_w, 0.54, _w, _h]),
+        'cc_4': fig.add_axes([_l + 3 * _w, 0.54, _w, _h]),
+        'cc_legend': fig.add_axes([_l + 4 * _w, 0.54, 0.13, _h]),    
+        'cat_1': fig.add_axes([_l, 0.32, _w, _h]),
+        'cat_2': fig.add_axes([_l + _w, 0.32, _w, _h]),    
+        'cat_3': fig.add_axes([_l + 2 * _w, 0.32, _w, _h]),
+        'cat_4': fig.add_axes([_l + 3 * _w, 0.32, _w, _h]),    
+        'cat_legend': fig.add_axes([_l + 4 * _w, 0.32, 0.13, _h]),
+        'cat_prop_1': fig.add_axes([_l, 0.1, _w, _h]),
+        'cat_prop_2': fig.add_axes([_l + _w, 0.1, _w, _h]),    
+        'cat_prop_3': fig.add_axes([_l + 2 * _w, 0.1, _w, _h]),
+        'cat_prop_4': fig.add_axes([_l + 3 * _w, 0.1, _w, _h]),
+        'pool_legend': fig.add_axes([_l + 4 * _w, 0.05, 0.13, 0.25]),
+    }
 
-    axd["cc"].set_ylabel("% Cells in Phase")
-    axd["cc"].yaxis.set_major_formatter(ticker.PercentFormatter(1.0))    
-    axd["cc"].set_xticks(list(range(0, 9 * 4)), labels=(list(range(1, 9)) + [""] ) * 4)
-    axd["cc"].set_xlim(-0.5, 34.5)
-    axd['cc'].set_xlabel("Time [Pool]")
-    _add_avlines(axd['cc'], [8, 17, 26], color="black", linewidth=1)
+    axd['pool_legend'].imshow(
+        plt.imread(FIG_RAPA_LEGEND_VERTICAL_FILE_NAME), aspect='equal'
+    )
+    axd['pool_legend'].axis('off')
+    
+    axd['expr_1'].set_title("A", loc='left', weight='bold', size=10, x=-0.1)
+    axd['cc_1'].set_title("B", loc='left', weight='bold', size=10, x=-0.1)
+    axd['cat_1'].set_title("C", loc='left', weight='bold', size=10, x=-0.1)
+    axd['cat_prop_1'].set_title("D", loc='left', weight='bold', size=10, x=-0.1)
 
-    ### PANEL C GENE CATEGORY STACKED BARPLOT ###
-    pool_bottoms = np.zeros(9 * 4)
-    pr_data = _get_prop_bar_data(data)
-    for p, pr in enumerate(GENE_CAT_COLS[::-1]):
-        pools = pr_data.loc[:, pr].T.values.flatten()
-        fig_refs["pr"] = axd["pr"].bar(list(range(0, 9 * 4)), pools, label=pr, bottom=pool_bottoms, 
-                                       color=gene_category_palette()[::-1][p])
-        pool_bottoms += pools
+    axd['cc_1'].set_ylabel("% Cells in Phase", size=8)
+    axd['cc_1'].tick_params(axis='both', which='major', labelsize=8)
 
-    axd["pr"].set_ylabel("% Gene Expression")
-    axd["pr"].yaxis.set_major_formatter(ticker.PercentFormatter(1.0))       
-    axd["pr"].set_xticks(list(range(0, 9 * 4))[:-1], labels=((list(range(1, 9)) + [""] ) * 4)[:-1])
-    axd["pr"].set_xlim(-0.5, 34.5)
-    axd['pr'].set_xlabel("Time [Pool]")
-    _add_avlines(axd['pr'], [8, 17, 26], color="black", linewidth=1)
+    axd['cat_1'].set_ylabel("Mean Counts (UMI)", size=8)
+    axd['cat_1'].tick_params(axis='both', which='major', labelsize=8)
 
-    ### COLORBARS ###
-    fig_refs['hm_cbar'] = fig.colorbar(fig_refs['hm'], cax=axd['hm_cbar'], orientation="vertical", aspect=40)
-    fig_refs['hm_cbar'].set_label("Log2 FC")
+    axd['cat_prop_1'].set_ylabel("% Gene Expression", size=8)
+    axd['cat_prop_1'].tick_params(axis='both', which='major', labelsize=8)
 
-    axd['cc_cbar'].axis('off')
-    fig_refs['cc_legend'] = axd['cc_cbar'].legend(title="Cell Cycle",
-                                                  handles=[patches.Patch(color=hexcolor) for hexcolor in cc_palette()],
-                                                  labels=CC_COLS,
-                                                  frameon=False,
-                                                  loc='center left')
+    axd['expr_2'].set_xlabel("Time (Pool)", size=8, x=1)
+    axd['cc_2'].set_xlabel("Time (Pool)", size=8, x=1)
+    axd['cat_2'].set_xlabel("Time (Pool)", size=8, x=1)
+    axd['cat_prop_2'].set_xlabel("Time (Pool)", size=8, x=1)
+    
+    plot_y_order = cluster_on_rows(
+        _mean_by_pool(data.expt_data[(1, "WT")], lfc_threshold=0.5).T
+    )
 
-    axd['pr_cbar'].axis('off')
-    fig_refs['pr_legend'] = axd['pr_cbar'].legend(title="Gene Category",
-                                                  handles=[patches.Patch(color=hexcolor) for hexcolor in gene_category_palette()],
-                                                  labels=GENE_CAT_COLS,
-                                                  frameon=False,
-                                                  loc='center left')
+    for i, k in enumerate([(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]):
 
-    for i, hexcolor in enumerate(cc_palette()):
-        fig_refs['cc_legend'].legendHandles[i].set_color(hexcolor)
+        i += 1
 
-    for i, hexcolor in enumerate(gene_category_palette()):
-        fig_refs['pr_legend'].legendHandles[i].set_color(hexcolor)
+        fig_refs[f'expr_{i}'] = axd[f'expr_{i}'].imshow(
+            _mean_by_pool(
+                data.expt_data[k]
+            ).reindex(
+                plot_y_order,
+                axis=1
+            ).fillna(0).values.T,
+            cmap='bwr',
+            vmin=-5,
+            vmax=5,
+            aspect='auto', interpolation='none'
+        )
+        axd[f'expr_{i}'].set_yticks([])
+        axd[f'expr_{i}'].set_xticks(list(range(0, 8)), list(range(1, 9)), size=8)
+        axd[f'expr_{i}'].set_title(f"Expt. {k[0]}: {k[1]}", size=8)
 
-    ### PANEL LABELS ###
-    for ax_id, label in supp_1_2_panel_labels.items():
-        axd[ax_id].set_title(label, loc='left', weight='bold')
+        fig_refs[f'cc_{i}'] = plot_stacked_barplot(
+            _get_cc_bar_data(data.expt_data[k]),
+            axd[f'cc_{i}'],
+            CC_COLS[::-1],
+            palette=cc_palette()[::-1]
+        )
+        axd[f'cc_{i}'].set_xticks(list(range(0, 8)), list(range(1, 9)), size=8)
+
+        fig_refs[f'cat_{i}'] = plot_stacked_barplot(
+            _get_prop_bar_data(data.expt_data[k]),
+            axd[f'cat_{i}'],
+            GENE_CAT_COLS[::-1],
+            palette=gene_category_palette()[::-1]
+        )
+        axd[f'cat_{i}'].set_xticks(list(range(0, 8)), list(range(1, 9)), size=8)
+        axd[f'cat_{i}'].set_ylim(0, 6000)
+
+        fig_refs[f'cat_prop_{i}'] = plot_stacked_barplot(
+            _get_prop_bar_data(data.expt_data[k], counts=False),
+            axd[f'cat_prop_{i}'],
+            GENE_CAT_COLS[::-1],
+            palette=gene_category_palette()[::-1]
+        )
+        axd[f'cat_prop_{i}'].set_xticks(list(range(0, 8)), list(range(1, 9)), size=8)
+
+        if i > 1:
+            axd[f'cc_{i}'].set_yticks([], [])
+            axd[f'cat_{i}'].set_yticks([], [])
+            axd[f'cat_prop_{i}'].set_yticks([], [])
+
+    fig_refs[f'expr_cbar'] = plt.colorbar(
+        fig_refs[f'expr_1'],
+        cax=axd[f'expr_cbar'],
+        label="Log$_2$ FC"
+    )
+    axd[f'expr_cbar'].tick_params(labelsize=8)
+
+    axd['cc_legend'].legend(
+        title="Phase",
+        handles=[patches.Patch(color=hexcolor) for hexcolor in cc_palette()],
+        labels=CC_COLS,
+        frameon=False,
+        loc='center left',
+        fontsize=8,
+        title_fontsize=8,
+        handlelength=1,
+        handleheight=1,
+        borderaxespad=0
+    )
+    axd['cc_legend'].axis('off')
+
+    axd['cat_legend'].legend(
+        title="Category",
+        handles=[patches.Patch(color=hexcolor) for hexcolor in gene_category_palette()],
+        labels=GENE_CAT_COLS,
+        frameon=False,
+        loc='center left',
+        fontsize=8,
+        title_fontsize=8,
+        handlelength=1,
+        handleheight=1,
+        borderaxespad=0
+    )
+    axd['cat_legend'].axis('off')
 
     if save:
         fig.savefig(FIGURE_1_2_SUPPLEMENTAL_FILE_NAME + ".png", facecolor='white')
