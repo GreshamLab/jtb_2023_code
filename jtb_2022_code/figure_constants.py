@@ -13,7 +13,7 @@ SUPPLEMENTAL_FIGURE_DPI = 300
 VERBOSE = True
 
 # Metadata for bulk expression data
-RAPA_BULK_EXPR_FILE = str(DataFile("~/Documents/R/rapa_20210628/data/20210312_RAPA_BULK_TIMECOURSE.tsv.gz"))
+RAPA_BULK_EXPR_FILE = str(DataFile("20210312_RAPA_BULK_TIMECOURSE.tsv.gz"))
 RAPA_BULK_EXPR_FILE_META_DATA_COLS = ["Oligo", "Time", "Replicate"]
 RAPA_BULK_EXPR_FILE_TIMES = [2.5, 5, 7.5, 10, 15, 30, 45, 60, 90, 120]
 
@@ -24,7 +24,7 @@ RAPA_SINGLE_CELL_VELOCITY = str(ScratchFile("2021_RAPA_VELOCITY_FIGS.h5ad"))
 RAPA_SINGLE_CELL_DENOISED = str(ScratchFile("2021_RAPA_DENOISED_FIGS.h5ad"))
 
 ELIFE_SINGLE_CELL_FILE = str(ScratchFile("ELIFE_2020_SINGLE_CELL.h5ad"))
-ELIFE_SINGLE_CELL_FILE_PROCESSED = str(ScratchFile("2018_ELIFE_STATIC.h5ad"))
+ELIFE_SINGLE_CELL_FILE_PROCESSED = str(ScratchFile("2020_ELIFE_STATIC.h5ad"))
 
 # For formatting (needs {e} and {g})
 RAPA_SINGLE_CELL_EXPR_BY_EXPT = str(ScratchFile("2021_RAPA_TIMECOURSE_FIGS_{e}_{g}.h5ad"))
@@ -38,13 +38,12 @@ INFERELATOR_TF_NAMES_FILE = str(ScratchFile("tf_names_yeastract.txt"))
 
 # Model files
 SUPIRFACTOR_COUNT_MODEL = str(ModelFile("RAPA_COUNT_RNN_MODEL.h5"))
-SUPIRFACTOR_VELOCITY_STATIC_MODEL = str(ModelFile("RAPA_VELOCITY_STATIC_MODEL.h5"))
 SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL = str(ModelFile("RAPA_VELOCITY_RNN_MODEL.h5"))
 SUPIRFACTOR_DECAY_MODEL = str(ModelFile("RAPA_DECAY_MODEL.h5"))
-SUPIRFACTOR_BIOPHYSICAL_MODEL = str(ModelFile("RAPA_TUNED_CONSTRAINED_JOINT_BIOPHYSICAL_MODEL.h5"))
+SUPIRFACTOR_BIOPHYSICAL_MODEL = str(ModelFile("RAPA_BIOPHYSICAL_MODEL.h5"))
 
-MODEL_RESULTS_FILE = str(DataFile("SUPIRFACTOR_RESULTS_ALL.tsv"))
-MODEL_LOSSES_FILE = str(DataFile("SUPIRFACTOR_LOSSES_ALL.tsv"))
+MODEL_RESULTS_FILE = str(DataFile("SUPIRFACTOR_RESULTS_ALL.tsv.gz"))
+MODEL_LOSSES_FILE = str(DataFile("SUPIRFACTOR_LOSSES_ALL.tsv.gz"))
 
 # Pseudotime TSV files keyed by (method, is_dewakss), value (file name, has_index)
 PSEUDOTIME_FILES = {
@@ -52,8 +51,8 @@ PSEUDOTIME_FILES = {
     ('cellrank', False): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK.tsv.gz")), True),
     ('monocle', False): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE.tsv.gz")), False),
     ('palantir', False): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR.tsv.gz")), True),
-    ('dpt', True): (str(DataFile("2021_RAPA_TIMECOURSE_DPT_DEWAKSS.tsv")), True),
-    ('cellrank', True): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK_DEWAKSS.tsv")), True),
+    ('dpt', True): (str(DataFile("2021_RAPA_TIMECOURSE_DPT_DEWAKSS.tsv.gz")), True),
+    ('cellrank', True): (str(DataFile("2021_RAPA_TIMECOURSE_CELLRANK_DEWAKSS.tsv.gz")), True),
     ('monocle', True): (str(DataFile("2021_RAPA_TIMECOURSE_MONOCLE_DEWAKSS.tsv.gz")), False),
     ('palantir', True): (str(DataFile("2021_RAPA_TIMECOURSE_PALANTIR_DEWAKSS.tsv.gz")), True)
 }
@@ -139,6 +138,7 @@ FIGURE_4_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_4"))
 FIGURE_5_FILE_NAME = str(FigureFile("Figure_5"))
 FIGURE_5_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_5"))
 FIGURE_6_FILE_NAME = str(FigureFile("Figure_6"))
+FIGURE_6_SUPPLEMENTAL_FILE_NAME = str(FigureFile("Supplemental_Figure_6"))
 
 # Search space for grid searches
 N_PCS = _np.arange(5, 115, 10)
