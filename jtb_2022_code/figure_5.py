@@ -14,14 +14,9 @@ import matplotlib.patches as patches
 from inferelator_velocity.utils.aggregation import aggregate_sliding_window_times
 
 from jtb_2022_code.utils.model_prediction import (
-    process_data_for_model,
-    process_velocity_for_model,
-    predict_from_model,
     plot_gene,
-    predict_all,
-    predict_biophysics,
-    predict_perturbation_from_model
 )
+
 from jtb_2022_code.figure_constants import *
 from jtb_2022_code.utils.figure_common import *
 

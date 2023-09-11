@@ -65,8 +65,9 @@ def predict_all(
 
     if data_processed:
         model_data = data
+        model_scaler = None
     else:
-        model_data, _ = process_data_for_model(data, count_model.prior_network_labels[0])
+        model_data, model_scaler = process_data_for_model(data, count_model.prior_network_labels[0])
 
     g = model_data.shape[1]
     
@@ -122,7 +123,7 @@ def predict_all(
         predict_times=predict_times
     )
 
-    return model_data, predicts
+    return model_data, predicts, model_scaler
     
 def predict_biophysics(
     model_data,
@@ -197,6 +198,82 @@ def predict_biophysics(
     ).reshape(-1, g)
         
     return predicts
+
+def predict_decays(
+    model_data,
+    predicts=None,
+    untreated_only=True,
+    n_predicts=60,
+    predict_times=None
+):
+
+    print("Predicting From Decay-Only Model")
+    decay_model = read(SUPIRFACTOR_DECAY_MODEL).eval()
+    _count_scaler = decay_model._count_inverse_scaler.numpy()
+    _velo_scaler = decay_model._velocity_inverse_scaler.numpy()
+
+    g = model_data.shape[1]
+    
+    _predict = np.multiply(
+        predict_from_model(
+            decay_model,
+            model_data,
+            return_counts=False,
+            untreated_only=untreated_only,
+            n_predicts=n_predicts
+        ),
+        _count_scaler[None, None, :]
+    ).reshape(-1, g)
+    
+    if predicts is None:
+        
+        predicts = _initialize_adata(
+            _predict,
+            model_data,
+            untreated_only=untreated_only,
+            n_predicts=n_predicts,
+            predict_times=predict_times
+        )
+        predicts.layers['biophysical_predict_velocity'] = predicts.X.copy()
+
+    else:
+        predicts.layers['biophysical_predict_velocity'] = _predict
+        
+    del _predict
+    
+    _sub_predicts, counts, decays = predict_from_model(
+        biophysics_model,
+        model_data,
+        return_submodels=True,
+        return_counts=True,
+        return_decays=True,
+        return_velocities=True,
+        untreated_only=untreated_only,
+        n_predicts=n_predicts
+    )
+        
+    predicts.layers['biophysical_predict_transcription'] = np.multiply(
+        _sub_predicts[0],
+        _velo_scaler[None, None, :]
+    ).reshape(-1, g)
+
+    predicts.layers['biophysical_predict_decay'] = np.multiply(
+        _sub_predicts[1],
+        _velo_scaler[None, None, :]
+    ).reshape(-1, g)
+       
+    predicts.layers['biophysical_predict_counts'] = np.multiply(
+        counts,
+        _count_scaler[None, None, :]
+    ).reshape(-1, g)
+    
+    predicts.layers['biophysical_predict_decay_constant'] = np.divide(
+        decays,
+        _count_scaler[None, None, :]
+    ).reshape(-1, g)
+        
+    return predicts
+
 
 def _initialize_adata(
     predict_data,
@@ -407,7 +484,15 @@ def _to_dataloader(
     except AttributeError:
         pass
     
-    if stack_data:
+    if stack_data and 'velocity' in model_data.layers:
+        _data = np.stack(
+            (
+                _data,
+                model_data.layers['velocity'][test_idx, :]
+            ),
+            -1
+        )
+    elif stack_data:
         _data = np.stack(
             (
                 _data,

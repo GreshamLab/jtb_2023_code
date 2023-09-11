@@ -1,4 +1,3 @@
-import itertools
 import functools
 
 import numpy as _np
@@ -14,12 +13,23 @@ import inferelator_velocity as _ifv
 from ..figure_constants import *
 from .projection_common import *
 from .dewakss_common import run_dewakss
-from .decay_common import calc_decays, calc_decay_windows, _calc_decay_windowed, _calc_decay
+from .decay_common import (
+    calc_decays,
+    calc_decay_windows,
+    _calc_decay_windowed,
+    _calc_decay,
+    get_decay_per_cell,
+    decay_window_to_cell_layer
+)
+    
 from .velocity_common import calculate_velocities
-from .pseudotime_common import spearman_rho_grid, calc_rhos, spearman_rho_pools, get_pca_pt
+from .pseudotime_common import (
+    spearman_rho_pools,
+    get_pca_pt
+)
 from .process_published_data import process_all_decay_links
-from .activity_common import get_decay_per_cell, calc_activity_expression, decay_window_to_cell_layer
 from sklearn.metrics import pairwise_distances
+
 
 class FigureSingleCellData:
     
@@ -35,8 +45,10 @@ class FigureSingleCellData:
         
     @property
     def expt_files(self):
-        return {(e, g): RAPA_SINGLE_CELL_EXPR_BY_EXPT.format(e=e, g=g) 
-                for e in self.expt_cats for g in self.gene_cats}
+        return {
+            (e, g): RAPA_SINGLE_CELL_EXPR_BY_EXPT.format(e=e, g=g) 
+            for e in self.expt_cats for g in self.gene_cats
+        }
     
     @property
     def all_data_file(self):
@@ -190,8 +202,10 @@ class FigureSingleCellData:
                 if VERBOSE:
                     print(f"Extracting [{k}] Single Cell Data from all data")
                     
-                self._expt_data[k] = self.all_data[(self.all_data.obs["Experiment"] == e) &
-                                                   (self.all_data.obs["Gene"] == g), :].copy()
+                self._expt_data[k] = self.all_data[
+                    (self.all_data.obs["Experiment"] == e) & (self.all_data.obs["Gene"] == g),
+                    :
+                ].copy()
     
     @staticmethod
     def _normalize(

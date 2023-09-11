@@ -317,8 +317,8 @@ def figure_1_supplement_2_plot(data, save=True):
             no_plot=True
         )['leaves']]
 
-    _l = 0.13
-    _w = 0.17
+    _l = 0.17
+    _w = 0.16
     _h = 0.14
 
     axd = {

@@ -1,22 +1,40 @@
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
 import numpy as np
+import anndata as ad
 
 from jtb_2022_code.utils.figure_common import *
 from jtb_2022_code.utils.process_published_data import process_all_decay_links
 
 from jtb_2022_code.figure_constants import *
-from .figure_3 import _get_fig4_data, _fig3_plot
+from jtb_2022_code.utils.figure_data import common_name
 
+from inferelator_velocity.utils.aggregation import aggregate_sliding_window_times
 from inferelator_velocity.decay import calc_decay
 from sklearn.linear_model import LinearRegression
 from scipy.stats import spearmanr
 
+from jtb_2022_code.utils.model_result_loader import (
+    load_model_results,
+    plot_results,
+    plot_losses,
+    get_plot_idx
+)
+
+from jtb_2022_code.utils.model_prediction import (
+    predict_from_model
+)
+
+from supirfactor_dynamical import (
+    read
+)
 
 def figure_5_supplement_1_plot(data, f3_data=None, save=True):
     
     if f3_data is None:
-        f3_data = _get_fig4_data(data)
+        f3_data = _get_fig5_data(data)
         
     time_key = f"program_{data.all_data.uns['programs']['rapa_program']}_time"
     
@@ -268,3 +286,251 @@ def figure_5_supplement_2_plot(data, save=True):
         fig.savefig(FIGURE_5_SUPPLEMENTAL_FILE_NAME + "_2.png", facecolor='white')
         
     return fig
+
+def figure_5_supplement_3_plot(
+    data,
+    model_data,
+    model_scaler,
+    save=False
+):
+    
+    decay_model = read(SUPIRFACTOR_DECAY_MODEL).eval()
+
+    decay_predicts = predict_from_model(
+        decay_model,
+        model_data,
+        return_decay_constants=True,
+        untreated_only=False
+    )[1]
+    
+    decay_predicts = ad.AnnData(decay_predicts.reshape(-1, decay_predicts.shape[2]) * -1)
+    decay_predicts.var_names = model_data.var_names.copy()
+    decay_predicts.obs['program_rapa_time'] = np.tile(np.arange(-10, 60) + 0.5, int(decay_predicts.shape[0] / 70))
+
+    decay_velo_predicts = predict_from_model(
+        decay_model,
+        model_data,
+        untreated_only=False,
+        return_data_stacked=True
+    )
+
+    fig_refs = {}
+    fig, axd = plt.subplots(3, 4, figsize=(5, 5), dpi=MAIN_FIGURE_DPI, gridspec_kw={'wspace': 0.5, 'hspace': 0.7})
+    plt.subplots_adjust(top=0.9, bottom=0.12, left=0.15, right=0.95)
+
+    def shift_axis(ax, x=None, y=None):
+
+        _p = ax.get_position()
+
+        if x is not None:
+            _p.x0 += x
+            _p.x1 += x
+        if y is not None:
+            _p.y0 += y
+            _p.y1 += y
+
+        ax.set_position(_p)
+
+    for i in range(4):
+        shift_axis(axd[1, i], y=-0.025)
+
+    ax_lr = fig.add_axes([0.02, 0.64, 0.50, 0.35], zorder=-3)
+    ax_wd = fig.add_axes([0.525, 0.64, 0.45, 0.35], zorder=-3)
+
+    ax_lr.add_patch(patches.Rectangle((0, 0), 1, 1, color='lavender'))
+    ax_lr.annotate("Learning Rate ($\gamma$)", xy=(0.02, 0.92), xycoords='axes fraction', size=10, weight='bold')
+    ax_lr.annotate("($\lambda$ = 1e-7)", xy=(0.02, 0.85), xycoords='axes fraction', size=8, weight='bold')
+    ax_lr.axis('off')
+
+    ax_wd.add_patch(patches.Rectangle((0, 0), 1, 1, color='mistyrose'))
+    ax_wd.annotate("Weight Decay ($\lambda$)", xy=(0.02, 0.92), xycoords='axes fraction', size=10, weight='bold')
+    ax_wd.annotate("($\gamma$ = 5e-5)", xy=(0.02, 0.85), xycoords='axes fraction', size=8, weight='bold')
+    ax_wd.axis('off')
+
+    rng = np.random.default_rng(100)
+
+    supirfactor_results, supirfactor_losses = load_model_results()
+
+    for j, model in enumerate(['decay']):
+        for i, (param, metric, other_param, other_param_val, result) in enumerate([
+            ("Learning_Rate", "R2_validation", "Weight_Decay", 1e-7, True),
+            ("Learning_Rate", list(map(str, range(1, 201))), "Weight_Decay", 1e-7, False),
+            ("Weight_Decay", "R2_validation", "Learning_Rate", 5e-5, True),
+            ("Weight_Decay", list(map(str, range(1, 201))), "Learning_Rate", 5e-5, False)
+        ]):
+
+            if result:
+
+                _result = supirfactor_results.loc[
+                    get_plot_idx(
+                        supirfactor_results,
+                        model,
+                        other_param,
+                        other_param_val,
+                        time='rapa',
+                        model_type='Decay'
+                    ),
+                    :
+                ].copy()
+                _result = _result[_result['Decay_Model_Width'] == 50]
+
+                plot_results(
+                    _result,
+                    metric,
+                    param,
+                    axd[0, i],
+                    ylim=(0, 0.3),
+                    yticks=(0, 0.1, 0.2, 0.3)
+                )
+
+            else:
+
+                _loss = supirfactor_losses.loc[
+                    get_plot_idx(
+                        supirfactor_losses,
+                        model,
+                        other_param,
+                        other_param_val,
+                        time='rapa',
+                        model_type='Decay'
+                    ),
+                    :
+                ].copy()
+                _loss = _loss[_loss['Decay_Model_Width'] == 50]
+
+                plot_losses(
+                    _loss,
+                    metric,
+                    param,
+                    axd[0, i],
+                    ylim=(0.0, 10)
+                )
+
+    axd[0, 0].set_title("A", loc='left', weight='bold', size=10, x=-0.6)              
+    axd[1, 0].set_title("B", loc='left', weight='bold', size=10, x=-0.6)              
+    axd[2, 0].set_title("C", loc='left', weight='bold', size=10, x=-0.6)              
+
+    for i, g in enumerate(["YKR039W", "YOR063W", 'YDR224C', 'YPR035W']):
+        _dc = decay_predicts.X[:, decay_predicts.var_names == g].ravel()
+        _dc /= model_scaler.scale_[decay_predicts.var_names == g]
+
+        axd[1, i].plot(
+            np.arange(-10, 60) + 0.5,
+            np.log(2) / aggregate_sliding_window_times(
+                _dc.reshape(-1, 1),
+                decay_predicts.obs['program_rapa_time'],
+                width=1,
+                centers=np.arange(-10, 60) + 0.5
+            )[0],
+            alpha=0.75,
+            color='red'
+        )
+
+        axd[1, i].plot(
+            np.arange(-10, 60) + 0.5,
+            np.log(2) / aggregate_sliding_window_times(
+                data.all_data.layers['decay_constants'][data.all_data.obs['Gene'] == "WT", :][:, data.all_data.var_names == g],
+                model_data.obs['program_rapa_time'],
+                width=1,
+                centers=np.arange(-10, 60) + 0.5
+            )[0],
+            alpha=0.5,
+            color='black'
+        )
+
+        axd[1, i].axvline(0, 0, 1, linestyle='--', linewidth=1.0, c='black')
+        axd[1, i].set_ylim(0, 60)
+        axd[1, i].set_xticks([0, 50], [0, 50])
+        axd[1, i].set_title(common_name(g), style='italic', size=8)
+        axd[1, i].tick_params(axis='both', which='major', labelsize=8)
+
+        _transcription_rate = np.subtract(
+            decay_velo_predicts[:, :, decay_predicts.var_names == g, 1],
+            decay_velo_predicts[:, :, decay_predicts.var_names == g, 2]
+        )
+
+        _tr_data = aggregate_sliding_window_times(
+            _transcription_rate.reshape(-1, 1),
+            np.tile(np.arange(-10, 60), decay_velo_predicts.shape[0]),
+            centers=np.arange(-10, 60) + 0.5,
+            width=1.
+        )[0]
+
+        axd[2, i].scatter(
+            np.tile(np.arange(-10, 60), decay_velo_predicts.shape[0]),
+            _transcription_rate,
+            color='gray',
+            s=1,
+            alpha=0.05
+        )
+
+        axd[2, i].plot(
+            np.arange(-10, 60) + 0.5,
+            _tr_data,
+            color='black',
+            linestyle=":"
+        )
+
+        axd[2, i].tick_params(axis='both', which='major', labelsize=8)
+        axd[2, i].set_xticks([0, 30, 60], [0, 30, 60])
+
+        _ylim = np.quantile(_transcription_rate, 0.95)
+        axd[2, i].set_ylim(-1 * _ylim, _ylim)
+        axd[2, i].set_yticks([-1, 0, 1])
+
+        velocity_axes(axd[2, i])
+
+    axd[1, 0].set_ylabel("Half-life [min]", size=8)
+    axd[2, 0].set_ylabel("Transcription Rate\n[counts/min]", size=8)
+
+    if save:
+        fig.savefig(FIGURE_5_SUPPLEMENTAL_FILE_NAME + "_3.png", facecolor="white")
+    
+    return fig
+
+def _get_fig5_data(data_obj, genes=None):
+    
+    if genes is None:
+        genes = FIGURE_4_GENES
+
+    _var_idx = data_obj.all_data.var_names.get_indexer(genes)
+    
+    fig3_data = data_obj.all_data.X[:, _var_idx]
+    
+    try:
+        fig3_data = fig3_data.A
+    except AttributeError:
+        pass
+
+    fig3_data = ad.AnnData(
+        fig3_data,
+        obs = data_obj.all_data.obs[['Pool', 'Experiment', 'Gene', 'program_0_time', 'program_1_time']],
+        dtype=np.float32
+    )
+
+    fig3_data.var_names=FIGURE_4_GENES
+    
+    fig3_data.uns['window_times'] = data_obj.all_data.uns['rapamycin_window_decay']['times']
+
+    fig3_data.layers['velocity'] = np.full(fig3_data.X.shape, np.nan, dtype=np.float32)
+    fig3_data.layers['denoised'] = np.full(fig3_data.X.shape, np.nan, dtype=np.float32)
+    fig3_data.varm['decay'] = data_obj.all_data.varm['rapamycin_window_decay'][_var_idx, :]
+
+    for k in data_obj.expts:
+
+        _idx = data_obj._all_data_expt_index(*k)
+
+        _vdata = data_obj.decay_data(*k)
+        
+        fig3_data.layers['velocity'][_idx, :] = _vdata.layers[RAPA_VELO_LAYER][:, _var_idx]
+        
+        if k[1] == "WT":
+            fig3_data.varm[f'decay_{k[0]}'] =  _vdata.varm['rapamycin_window_decay'][_var_idx, :]
+       
+        del _vdata
+
+        fig3_data.layers['denoised'][_idx, :] = data_obj.denoised_data(*k).X[:, _var_idx]
+
+    fig3_data = fig3_data[fig3_data.obs['Gene'] == "WT", :].copy()
+    
+    return fig3_data
