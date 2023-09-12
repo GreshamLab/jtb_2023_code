@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 
-from jtb_2022_code.figure_6 import (
+from jtb_2023_code.figure_6 import (
     _plot_elife_predicts,
     _plot_tfa_difference_and_marginal_loss,
 )
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MAIN_FIGURE_DPI,
     FIGURE_6_SUPPLEMENTAL_FILE_NAME
 )

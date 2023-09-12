@@ -1,6 +1,6 @@
 import gc
 
-from jtb_2022_code.utils.figure_filenames import parse_file_path_command_line
+from jtb_2023_code.utils.figure_filenames import parse_file_path_command_line
 
 
 def main():
@@ -9,7 +9,7 @@ def main():
 
 
 def preprocess():
-    from jtb_2022_code.utils.figure_data import (
+    from jtb_2023_code.utils.figure_data import (
         FigureSingleCellData,
         calc_other_cc_groups,
     )

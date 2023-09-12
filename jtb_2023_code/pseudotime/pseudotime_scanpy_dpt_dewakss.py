@@ -9,7 +9,7 @@ from ..utils.adata_common import get_clean_anndata
 from ..utils.dewakss_common import run_dewakss
 from .pseudotime_scanpy_dpt import do_dpt, DPT_OBS_COL
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     N_PCS
 )
 

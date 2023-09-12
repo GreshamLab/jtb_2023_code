@@ -4,13 +4,13 @@ import matplotlib.patches as patches
 import numpy as np
 import anndata as ad
 
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     to_pool_colors,
     velocity_axes
 )
-from jtb_2022_code.utils.process_published_data import process_all_decay_links
+from jtb_2023_code.utils.process_published_data import process_all_decay_links
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MAIN_FIGURE_DPI,
     FIGURE_4_GENES,
     SFIG3B_FILE_NAME,
@@ -18,7 +18,7 @@ from jtb_2022_code.figure_constants import (
     SUPIRFACTOR_DECAY_MODEL,
     RAPA_VELO_LAYER
 )
-from jtb_2022_code.utils.figure_data import common_name
+from jtb_2023_code.utils.figure_data import common_name
 
 from inferelator_velocity.utils.aggregation import (
     aggregate_sliding_window_times
@@ -27,14 +27,14 @@ from inferelator_velocity.decay import calc_decay
 from sklearn.linear_model import LinearRegression
 from scipy.stats import spearmanr
 
-from jtb_2022_code.utils.model_result_loader import (
+from jtb_2023_code.utils.model_result_loader import (
     load_model_results,
     plot_results,
     plot_losses,
     get_plot_idx,
 )
 
-from jtb_2022_code.utils.model_prediction import predict_from_model
+from jtb_2023_code.utils.model_prediction import predict_from_model
 
 from supirfactor_dynamical import read
 

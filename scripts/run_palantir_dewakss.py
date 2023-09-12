@@ -1,4 +1,4 @@
-from jtb_2022_code.pseudotime.pseudotime_palantir_dewakss import palantir_dewakss, PALANTIR_DEWAKSS_OBSM_COL
+from jtb_2023_code.pseudotime.pseudotime_palantir_dewakss import palantir_dewakss, PALANTIR_DEWAKSS_OBSM_COL
 import anndata as _ad
 
 ADATA_FILE = "2021_RAPA_TIMECOURSE.h5ad"

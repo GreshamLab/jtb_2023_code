@@ -4,11 +4,11 @@ import matplotlib.patches as patches
 import numpy as np
 import scanpy as sc
 
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     pool_palette,
     to_pool_colors
 )
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MAIN_FIGURE_DPI,
     SUPPLEMENTAL_FIGURE_DPI,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME,
@@ -19,7 +19,7 @@ from jtb_2022_code.figure_constants import (
 from matplotlib import collections
 from sklearn.linear_model import LinearRegression
 
-from jtb_2022_code.utils.model_result_loader import (
+from jtb_2023_code.utils.model_result_loader import (
     load_model_results,
     plot_results,
     plot_losses,

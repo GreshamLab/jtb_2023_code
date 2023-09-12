@@ -11,13 +11,13 @@ from inferelator_velocity.utils.aggregation import (
     aggregate_sliding_window_times
 )
 
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     pool_palette,
     to_pool_colors,
     velocity_axes
 )
-from jtb_2022_code.utils.figure_data import common_name
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.utils.figure_data import common_name
+from jtb_2023_code.figure_constants import (
     SUPIRFACTOR_COUNT_MODEL,
     SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL,
     SUPIRFACTOR_BIOPHYSICAL_MODEL

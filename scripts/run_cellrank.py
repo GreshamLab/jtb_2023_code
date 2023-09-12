@@ -1,4 +1,4 @@
-from jtb_2022_code.pseudotime.pseudotime_cellrank import cellrank_grid_search, CELLRANK_OBSM_COL
+from jtb_2023_code.pseudotime.pseudotime_cellrank import cellrank_grid_search, CELLRANK_OBSM_COL
 import anndata as _ad
 
 ADATA_FILE = "2021_RAPA_TIMECOURSE.h5ad"

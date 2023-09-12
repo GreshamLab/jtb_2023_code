@@ -1,18 +1,18 @@
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MAIN_FIGURE_DPI,
     FIGURE_4_GENES,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME,
     FIGURE_4_FILE_NAME
 )
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     to_pool_colors
 )
 
-from jtb_2022_code.utils.model_result_loader import (
+from jtb_2023_code.utils.model_result_loader import (
     load_model_results,
     summarize_model_results,
 )
-from jtb_2022_code.utils.model_prediction import plot_gene
+from jtb_2023_code.utils.model_prediction import plot_gene
 
 import numpy as np
 

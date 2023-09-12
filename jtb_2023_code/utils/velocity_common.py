@@ -1,6 +1,6 @@
 import inferelator_velocity as ifv
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     CC_TIME_COL,
     CC_LENGTH,
     RAPA_TIME_COL

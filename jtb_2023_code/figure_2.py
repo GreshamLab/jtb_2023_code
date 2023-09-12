@@ -1,10 +1,10 @@
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     plot_heatmap,
     to_pool_colors,
     to_cc_colors,
     pool_palette
 )
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MAIN_FIGURE_DPI,
     METRIC_SCALE_LIMS,
     CC_LENGTH,

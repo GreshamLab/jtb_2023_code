@@ -1,7 +1,7 @@
 from inferelator_velocity.times import _wrap_time
 from inferelator_velocity import decay
 
-from jtb_2022_code.figure_constants import CC_LENGTH
+from jtb_2023_code.figure_constants import CC_LENGTH
 
 import gc
 import anndata as ad

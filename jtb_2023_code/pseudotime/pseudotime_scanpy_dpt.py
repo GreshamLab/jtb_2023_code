@@ -3,15 +3,15 @@ import numpy as _np
 import scanpy as _sc
 
 from joblib import parallel_backend as _parallel_backend
-from jtb_2022_code.utils.pseudotime_common import (
+from jtb_2023_code.utils.pseudotime_common import (
     spearman_rho_pools
 )
 
 from ..utils.projection_common import do_pc1_min_cell
-from jtb_2022_code.utils.pseudotime_common import do_pca_on_groups
-from jtb_2022_code.utils.adata_common import get_clean_anndata
+from jtb_2023_code.utils.pseudotime_common import do_pca_on_groups
+from jtb_2023_code.utils.adata_common import get_clean_anndata
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     N_PCS,
     N_NEIGHBORS,
     VERBOSE

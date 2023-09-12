@@ -2,8 +2,8 @@ import numpy as _np
 import os as _os         
 from .utils.figure_filenames import *
 
-DataFile.set_path("~/Documents/jtb_2022_code/Data/")
-FigureFile.set_path("~/Documents/jtb_2022_code/Figures/")
+DataFile.set_path("~/Documents/jtb_2023_code/Data/")
+FigureFile.set_path("~/Documents/jtb_2023_code/Figures/")
 ScratchFile.set_path("/scratch/cj59/RAPA/")
 
 MAIN_FIGURE_DPI = 300

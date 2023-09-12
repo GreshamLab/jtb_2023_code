@@ -1,5 +1,5 @@
 import scanpy as sc
-from jtb_2022_code.utils.figure_filenames import parse_file_path_command_line
+from jtb_2023_code.utils.figure_filenames import parse_file_path_command_line
 
 
 def main():
@@ -8,34 +8,34 @@ def main():
 
 
 def generate_figures():
-    from jtb_2022_code.preprocess import preprocess
+    from jtb_2023_code.preprocess import preprocess
 
-    from jtb_2022_code.utils.model_prediction import (
+    from jtb_2023_code.utils.model_prediction import (
         process_velocity_for_model,
         predict_all,
     )
 
-    from jtb_2022_code.figure_constants import (
+    from jtb_2023_code.figure_constants import (
         SUPIRFACTOR_BIOPHYSICAL_MODEL
     )
 
-    from jtb_2022_code.utils.model_result_loader import load_model_results
+    from jtb_2023_code.utils.model_result_loader import load_model_results
 
-    from jtb_2022_code.old_data.elife_data import (
+    from jtb_2023_code.old_data.elife_data import (
         OldElifeData,
         get_elife_model_predictions,
     )
 
     from supirfactor_dynamical import read
 
-    from jtb_2022_code.figure_1 import plot_figure_1
-    from jtb_2022_code.figure_1_supplemental import (
+    from jtb_2023_code.figure_1 import plot_figure_1
+    from jtb_2023_code.figure_1_supplemental import (
         figure_1_supplement_1_plot,
         figure_1_supplement_2_plot,
     )
 
-    from jtb_2022_code.figure_2 import plot_figure_2
-    from jtb_2022_code.figure_2_supplemental import (
+    from jtb_2023_code.figure_2 import plot_figure_2
+    from jtb_2023_code.figure_2_supplemental import (
         figure_2_supplement_1_plot,
         figure_2_supplement_2_plot,
         figure_2_supplement_3_plot,
@@ -45,31 +45,31 @@ def generate_figures():
         figure_2_supplement_14_plot,
     )
 
-    from jtb_2022_code.figure_3 import figure_3_plot
-    from jtb_2022_code.figure_3_supplemental import (
+    from jtb_2023_code.figure_3 import figure_3_plot
+    from jtb_2023_code.figure_3_supplemental import (
         figure_3_supplement_1_plot,
         figure_3_supplement_2_plot,
         figure_3_supplement_3_plot,
     )
 
-    from jtb_2022_code.figure_4 import plot_figure_4
-    from jtb_2022_code.figure_4_supplemental import (
+    from jtb_2023_code.figure_4 import plot_figure_4
+    from jtb_2023_code.figure_4_supplemental import (
         figure_4_supplement_1_plot,
         figure_4_supplement_2_plot,
         figure_4_supplement_3_plot,
         figure_4_supplement_4_plot,
     )
 
-    from jtb_2022_code.figure_5 import plot_figure_5
-    from jtb_2022_code.figure_5_supplemental import (
+    from jtb_2023_code.figure_5 import plot_figure_5
+    from jtb_2023_code.figure_5_supplemental import (
         figure_5_supplement_1_plot,
         figure_5_supplement_2_plot,
         figure_5_supplement_3_plot,
     )
 
-    from jtb_2022_code.figure_6 import plot_figure_6
+    from jtb_2023_code.figure_6 import plot_figure_6
 
-    from jtb_2022_code.figure_6_supplemental import figure_6_supplement_1_plot
+    from jtb_2023_code.figure_6_supplemental import figure_6_supplement_1_plot
 
     data = preprocess()
 

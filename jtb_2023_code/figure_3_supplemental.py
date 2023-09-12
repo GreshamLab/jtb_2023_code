@@ -10,14 +10,14 @@ from sklearn.preprocessing import StandardScaler
 
 from supirfactor_dynamical import TruncRobustScaler
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     INFERELATOR_DATA_FILE,
     INFERELATOR_PRIORS_FILE,
     MAIN_FIGURE_DPI,
     FIGURE_3_SUPPLEMENTAL_FILE_NAME,
     FIG_DEEP_LEARNING_TRAINING_FILE_NAME
 )
-from jtb_2022_code.utils.model_result_loader import (
+from jtb_2023_code.utils.model_result_loader import (
     load_model_results,
     plot_results,
     plot_losses,

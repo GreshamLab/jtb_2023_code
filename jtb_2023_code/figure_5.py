@@ -7,16 +7,16 @@ from inferelator_velocity.utils.aggregation import (
     aggregate_sliding_window_times
 )
 
-from jtb_2022_code.utils.model_prediction import (
+from jtb_2023_code.utils.model_prediction import (
     plot_gene,
 )
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MAIN_FIGURE_DPI,
     FIG_DYNAMICAL_FILE_NAME,
     FIGURE_5_FILE_NAME
 )
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     align_ylim,
     velocity_axes,
     plot_correlations,

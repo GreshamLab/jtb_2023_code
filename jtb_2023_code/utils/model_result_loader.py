@@ -5,7 +5,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     MODEL_LOSSES_FILE,
     MODEL_RESULTS_FILE
 )

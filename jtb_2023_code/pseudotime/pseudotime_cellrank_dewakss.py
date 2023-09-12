@@ -13,7 +13,7 @@ from .pseudotime_cellrank import (
     CELLRANK_OBSM_COL
 )
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     N_PCS,
     N_NEIGHBORS
 )

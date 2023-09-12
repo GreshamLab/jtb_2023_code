@@ -13,13 +13,13 @@ from scipy.spatial.distance import squareform
 
 import matplotlib.pyplot as plt
 
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     pool_palette,
     cc_palette,
     plot_heatmap
 )
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     FIG_CC_LEGEND_VERTICAL_FILE_NAME,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME,
     CC_LENGTH_DATA_FILE,

@@ -9,7 +9,7 @@ from ..utils.adata_common import get_clean_anndata
 from ..utils.dewakss_common import run_dewakss
 from .pseudotime_palantir import _do_palantir, PALANTIR_OBSM_COL
 
-from jtb_2022_code.figure_constants import N_PCS
+from jtb_2023_code.figure_constants import N_PCS
 
 PALANTIR_DEWAKSS_OBSM_COL = "denoised_" + PALANTIR_OBSM_COL
 

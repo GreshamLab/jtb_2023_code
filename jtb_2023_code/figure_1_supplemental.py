@@ -11,7 +11,7 @@ from scipy.cluster.hierarchy import (
 
 from scipy.spatial.distance import pdist
 
-from jtb_2022_code.figure_constants import (
+from jtb_2023_code.figure_constants import (
     CC_COLS,
     GENE_CAT_COLS,
     MAIN_FIGURE_DPI,
@@ -19,7 +19,7 @@ from jtb_2022_code.figure_constants import (
     FIGURE_1_2_SUPPLEMENTAL_FILE_NAME,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME
 )
-from jtb_2022_code.utils.figure_common import (
+from jtb_2023_code.utils.figure_common import (
     pool_palette,
     strain_palette,
     cc_palette,

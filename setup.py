@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-DISTNAME = 'jtb_2022_code'
+DISTNAME = 'jtb_2023_code'
 VERSION = '1.0.0'
 MAINTAINER = 'Chris Jackson'
 MAINTAINER_EMAIL = 'cj59@nyu.edu'
@@ -12,7 +12,7 @@ setup(
     author=MAINTAINER,
     author_email=MAINTAINER_EMAIL,
     license=LICENSE,
-    packages=find_packages(include=['jtb_2022_code', "jtb_2022_code.*"]),
+    packages=find_packages(include=['jtb_2023_code', "jtb_2023_code.*"]),
     install_requires=[
       'numpy',
       'scipy',

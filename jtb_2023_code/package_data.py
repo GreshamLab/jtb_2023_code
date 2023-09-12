@@ -5,7 +5,7 @@ import anndata as ad
 import numpy as np
 import scanpy as sc
 
-from jtb_2022_code.utils.figure_filenames import parse_file_path_command_line
+from jtb_2023_code.utils.figure_filenames import parse_file_path_command_line
 
 
 def main():
@@ -30,7 +30,7 @@ def main():
 
 
 def package_data(out_file):
-    from jtb_2022_code.utils.figure_data import FigureSingleCellData
+    from jtb_2023_code.utils.figure_data import FigureSingleCellData
 
     data = FigureSingleCellData()
 

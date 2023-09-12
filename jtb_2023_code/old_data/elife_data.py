@@ -6,7 +6,7 @@ import scipy.sparse
 import scanpy as sc
 import torch
 
-from jtb_2022_code.utils.model_prediction import predict_all
+from jtb_2023_code.utils.model_prediction import predict_all
 
 from supirfactor_dynamical import (
     TimeDataset,
