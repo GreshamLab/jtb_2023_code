@@ -112,6 +112,7 @@ FIG_RAPA_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_RAPA_Legend_Verti
 FIG_CC_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_CC_Legend_Vertical.png"))
 FIG_EXPT_LEGEND_VERTICAL_FILE_NAME = str(SchematicFile("Figure_EXPT_Legend_Vertical.png"))
 FIG_DEEP_LEARNING_FILE_NAME = str(SchematicFile("Deep_Learning_Model.png"))
+FIG_DEEP_LEARNING_TRAINING_FILE_NAME = str(SchematicFile("Deep_Learning_Training.png"))
 FIG_DYNAMICAL_FILE_NAME = str(SchematicFile("Dynamical_Model.png"))
 
 # Color Palettes for Categorical Data
