@@ -340,6 +340,6 @@ def get_elife_predicts(
         scaler=scaler
     )
 
-    _, ypd_predicts = predict_all(ypd, data_processed=True)
+    _, ypd_predicts, _ = predict_all(ypd, data_processed=True)
 
     return ypd, ypd_predicts, ypd_scaler

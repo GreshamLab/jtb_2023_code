@@ -51,7 +51,7 @@ def figure_5_supplement_1_plot(data, f3_data=None, save=True):
 
     fig_refs = {}
 
-    fig = plt.figure(figsize=(4, 4), dpi=300)
+    fig = plt.figure(figsize=(4, 4), dpi=MAIN_FIGURE_DPI)
 
     _small_w = 0.1
     _small_h = 0.125
@@ -313,7 +313,7 @@ def figure_5_supplement_3_plot(
     data,
     model_data,
     model_scaler,
-    save=False
+    save=True
 ):
     decay_model = read(SUPIRFACTOR_DECAY_MODEL).eval()
 
@@ -333,7 +333,10 @@ def figure_5_supplement_3_plot(
     )
 
     decay_velo_predicts = predict_from_model(
-        decay_model, model_data, untreated_only=False, return_data_stacked=True
+        decay_model,
+        model_data,
+        untreated_only=False,
+        return_data_stacked=True
     )
 
     fig, axd = plt.subplots(

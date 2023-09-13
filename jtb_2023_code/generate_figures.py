@@ -86,14 +86,13 @@ def generate_figures():
     figure_2_supplement_13_plot(data)
     figure_2_supplement_14_plot()
 
-    supirfactor_results, supirfactor_losses = load_model_results()
     model_data, predicts, model_scaler = predict_all(data.all_data)
     predicts.X = predicts.layers["count_predict_counts"]
 
     figure_3_plot(model_data, predicts)
     figure_3_supplement_1_plot()
-    figure_3_supplement_2_plot(supirfactor_results, supirfactor_losses)
-    figure_3_supplement_3_plot(supirfactor_results, supirfactor_losses)
+    figure_3_supplement_2_plot()
+    figure_3_supplement_3_plot()
 
     # Do PCA for fig4
     predicts.X = predicts.layers["velocity_predict_counts"]
@@ -111,6 +110,8 @@ def generate_figures():
     figure_4_supplement_2_plot(data)
     figure_4_supplement_3_plot()
     figure_4_supplement_4_plot()
+
+    model_data.layers['velocity'] = velo_data.X
 
     plot_figure_5(model_data, velo_data, predicts)
     figure_5_supplement_1_plot(data)

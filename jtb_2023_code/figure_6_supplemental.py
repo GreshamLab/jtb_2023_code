@@ -16,7 +16,7 @@ def figure_6_supplement_1_plot(predictions, rapa, save=True):
         4,
         3,
         figsize=(4, 5),
-        dpi=300,
+        dpi=MAIN_FIGURE_DPI,
         gridspec_kw={"wspace": 0.4, "hspace": 0.5, "left": 0.2},
     )
 
