@@ -6,7 +6,7 @@ from jtb_2023_code.figure_6 import (
 )
 
 from jtb_2023_code.figure_constants import (
-    MAIN_FIGURE_DPI,
+    SUPPLEMENTAL_FIGURE_DPI,
     FIGURE_6_SUPPLEMENTAL_FILE_NAME
 )
 
@@ -16,7 +16,7 @@ def figure_6_supplement_1_plot(predictions, rapa, save=True):
         4,
         3,
         figsize=(4, 5),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         gridspec_kw={"wspace": 0.4, "hspace": 0.5, "left": 0.2},
     )
 
@@ -66,7 +66,7 @@ def figure_6_supplement_2_plot(
     model,
     save=True
 ):
-    fig = plt.figure(figsize=(7, 4), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(7, 4), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     axd = {
         "tfa_all": fig.add_axes([0.05, 0.575, 0.9, 0.325]),

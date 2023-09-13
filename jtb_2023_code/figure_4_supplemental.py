@@ -9,7 +9,6 @@ from jtb_2023_code.utils.figure_common import (
     to_pool_colors
 )
 from jtb_2023_code.figure_constants import (
-    MAIN_FIGURE_DPI,
     SUPPLEMENTAL_FIGURE_DPI,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME,
     FIGURE_4_SUPPLEMENTAL_FILE_NAME,
@@ -30,7 +29,7 @@ from jtb_2023_code.utils.model_result_loader import (
 def figure_4_supplement_1_plot(data, save=True):
     fig_refs = {}
 
-    fig = plt.figure(figsize=(6, 4), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(6, 4), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     _halfwidth = 0.12
     _height = 0.22
@@ -243,7 +242,7 @@ def figure_4_supplement_3_plot(save=True):
         4,
         6,
         figsize=(8, 8),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         gridspec_kw={"wspace": 0.5, "hspace": 0.6},
     )
     plt.subplots_adjust(top=0.9, bottom=0.1, left=0.08, right=0.95)
@@ -402,7 +401,7 @@ def figure_4_supplement_4_plot(save=True):
         4,
         6,
         figsize=(8, 8),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         gridspec_kw={"wspace": 0.5, "hspace": 0.6},
     )
     plt.subplots_adjust(top=0.9, bottom=0.1, left=0.08, right=0.95)
@@ -606,7 +605,11 @@ def _plot_velocity_calc(
     gene_name=None,
 ):
     if pca_ax is None or expr_ax is None:
-        fig, axs = plt.subplots(1, 2, figsize=(5, 3), dpi=MAIN_FIGURE_DPI)
+        fig, axs = plt.subplots(
+            1, 2,
+            figsize=(5, 3),
+            dpi=SUPPLEMENTAL_FIGURE_DPI
+        )
         pca_ax = axs[0]
         expr_ax = axs[1]
 

@@ -11,7 +11,7 @@ from jtb_2023_code.utils.figure_common import (
 from jtb_2023_code.utils.process_published_data import process_all_decay_links
 
 from jtb_2023_code.figure_constants import (
-    MAIN_FIGURE_DPI,
+    SUPPLEMENTAL_FIGURE_DPI,
     FIGURE_4_GENES,
     SFIG3B_FILE_NAME,
     FIGURE_5_SUPPLEMENTAL_FILE_NAME,
@@ -51,7 +51,7 @@ def figure_5_supplement_1_plot(data, f3_data=None, save=True):
 
     fig_refs = {}
 
-    fig = plt.figure(figsize=(4, 4), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(4, 4), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     _small_w = 0.1
     _small_h = 0.125
@@ -216,7 +216,7 @@ def figure_5_supplement_2_plot(data, save=True):
         "Geisberg2014",
     ]
 
-    fig, axd = plt.subplots(6, 6, figsize=(6, 6), dpi=MAIN_FIGURE_DPI)
+    fig, axd = plt.subplots(6, 6, figsize=(6, 6), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     ax_hm = fig.add_axes([0.65, 0.65, 0.2, 0.2])
     ax_hm_cbar = fig.add_axes([0.875, 0.7, 0.02, 0.1])
@@ -343,7 +343,7 @@ def figure_5_supplement_3_plot(
         3,
         4,
         figsize=(5, 5),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         gridspec_kw={"wspace": 0.5, "hspace": 0.7},
     )
     plt.subplots_adjust(top=0.9, bottom=0.12, left=0.15, right=0.95)

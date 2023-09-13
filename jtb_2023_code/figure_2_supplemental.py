@@ -27,7 +27,7 @@ from jtb_2023_code.figure_constants import (
     SFIG2A_FILE_NAME,
     CC_COLS,
     N_PCS,
-    MAIN_FIGURE_DPI
+    SUPPLEMENTAL_FIGURE_DPI
 )
 
 from inferelator_velocity.plotting.program_times import (
@@ -63,7 +63,7 @@ def figure_2_supplement_1_plot(data, save=True):
             hspace=0.01,
         ),
         figsize=(6, 9),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         constrained_layout=True,
     )
 
@@ -141,7 +141,7 @@ def figure_2_supplement_14_plot(save=True):
     _lsq = results.params["x1"], results.params["const"], results.bse["x1"]
     _se = 1 / (_lsq[0] - _lsq[2]) - 1 / (_lsq[0])
 
-    fig, ax = plt.subplots(1, 1, figsize=(2, 2), dpi=MAIN_FIGURE_DPI)
+    fig, ax = plt.subplots(1, 1, figsize=(2, 2), dpi=SUPPLEMENTAL_FIGURE_DPI)
     plt.subplots_adjust(top=0.9, bottom=0.2, left=0.25, right=0.95)
 
     ax.plot(
@@ -233,7 +233,7 @@ def figure_2_supplement_2_plot(data, save=True):
             hspace=0.25,
         ),
         figsize=(6, 9),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
     )
 
     for ax_id, label in panel_labels.items():
@@ -348,7 +348,7 @@ def figure_2_supplement_3_plot(adata, save=True):
             hspace=0.25,
         ),
         figsize=(6, 6),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
     )
 
     for ax_ref, (title, metric, vmin, vmax, cbar_name) in metrics.items():
@@ -403,7 +403,7 @@ def figure_2_supplement_5_12_plot(data, save=True):
                 hspace=0.35,
             ),
             figsize=(6, 8),
-            dpi=MAIN_FIGURE_DPI,
+            dpi=SUPPLEMENTAL_FIGURE_DPI,
         )
 
         program_time_summary(
@@ -442,7 +442,7 @@ def figure_2_supplement_5_12_plot(data, save=True):
                 hspace=0.35,
             ),
             figsize=(6, 8),
-            dpi=MAIN_FIGURE_DPI,
+            dpi=SUPPLEMENTAL_FIGURE_DPI,
         )
 
         program_time_summary(
@@ -530,7 +530,7 @@ def figure_2_supplement_13_plot(data, save=True):
             hspace=0.1,
         ),
         figsize=(6, 9),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
     )
 
     for pt, pt_key in [
@@ -624,7 +624,7 @@ def figure_2_supplement_13_plot(data, save=True):
 
 def figure_2_supplement_4_plot(data_obj, save=True):
     fig_refs = {}
-    fig = plt.figure(figsize=(6, 6), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(6, 6), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     axd = {
         "rapa_heatmap": fig.add_axes([0.08, 0.45, 0.8, 0.5]),

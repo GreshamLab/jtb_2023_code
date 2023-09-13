@@ -14,7 +14,7 @@ from scipy.spatial.distance import pdist
 from jtb_2023_code.figure_constants import (
     CC_COLS,
     GENE_CAT_COLS,
-    MAIN_FIGURE_DPI,
+    SUPPLEMENTAL_FIGURE_DPI,
     FIGURE_1_1_SUPPLEMENTAL_FILE_NAME,
     FIGURE_1_2_SUPPLEMENTAL_FILE_NAME,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME
@@ -125,7 +125,7 @@ def _patches(palette):
 def figure_1_supplement_1_plot(data, save=True):
     fig_refs = {}
 
-    fig = plt.figure(figsize=(5, 8), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(5, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     axd = {
         "ncells": fig.add_axes([0.1, 0.875, 0.7, 0.1]),
@@ -389,7 +389,7 @@ def figure_1_supplement_1_plot(data, save=True):
 def figure_1_supplement_2_plot(data, save=True):
     fig_refs = {}
 
-    fig = plt.figure(figsize=(5, 7), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(5, 7), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     def cluster_on_rows(dataframe, **kwargs):
         return dataframe.index[

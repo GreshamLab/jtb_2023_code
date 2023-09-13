@@ -19,8 +19,6 @@ def generate_figures():
         SUPIRFACTOR_BIOPHYSICAL_MODEL
     )
 
-    from jtb_2023_code.utils.model_result_loader import load_model_results
-
     from jtb_2023_code.old_data.elife_data import (
         OldElifeData,
         get_elife_model_predictions,
@@ -100,7 +98,7 @@ def generate_figures():
     sc.pp.pca(model_data, n_comps=2)
 
     # Process velocity data for fig4
-    velo_data, velo_scaler = process_velocity_for_model(
+    velo_data, _ = process_velocity_for_model(
         data,
         model_data.var_names
     )
@@ -122,9 +120,9 @@ def generate_figures():
     biophysical_model = read(SUPIRFACTOR_BIOPHYSICAL_MODEL).eval()
 
     (
-        ypd,
+        _,
         rapa,
-        ypd_scaler,
+        _,
         predictions,
         tfa_predictions,
         prediction_gradients,

@@ -13,7 +13,7 @@ from supirfactor_dynamical import TruncRobustScaler
 from jtb_2023_code.figure_constants import (
     INFERELATOR_DATA_FILE,
     INFERELATOR_PRIORS_FILE,
-    MAIN_FIGURE_DPI,
+    SUPPLEMENTAL_FIGURE_DPI,
     FIGURE_3_SUPPLEMENTAL_FILE_NAME,
     FIG_DEEP_LEARNING_TRAINING_FILE_NAME
 )
@@ -78,7 +78,7 @@ def figure_3_supplement_1_plot(save=True):
 
     fig, ax = plt.subplots(
         2, 4,
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         figsize=(8, 6),
         gridspec_kw={"wspace": 0.3, "hspace": 0.75, 'bottom': 0.4}
     )
@@ -205,7 +205,7 @@ def figure_3_supplement_2_plot(save=True):
         4,
         6,
         figsize=(8, 8),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         gridspec_kw={"wspace": 0.5, "hspace": 0.6},
     )
     plt.subplots_adjust(top=0.8, bottom=0.1, left=0.08, right=0.95)
@@ -370,7 +370,7 @@ def figure_3_supplement_3_plot(save=True):
         4,
         6,
         figsize=(8, 8),
-        dpi=MAIN_FIGURE_DPI,
+        dpi=SUPPLEMENTAL_FIGURE_DPI,
         gridspec_kw={"wspace": 0.5, "hspace": 0.6},
     )
 
