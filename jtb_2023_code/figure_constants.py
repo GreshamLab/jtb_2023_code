@@ -1,6 +1,11 @@
 import numpy as _np
-import os as _os         
-from .utils.figure_filenames import *
+from .utils.figure_filenames import (
+    DataFile,
+    FigureFile,
+    SchematicFile,
+    ScratchFile,
+    ModelFile
+)
 
 DataFile.set_path("~/Documents/jtb_2022_code/Data/")
 FigureFile.set_path("~/Documents/jtb_2022_code/Figures/")
@@ -66,7 +71,7 @@ DECAY_CONSTANT_FILES = {
     'Munchel2011': ('tsv', "Systematic Name", "Half-life [min]", None),
     'Miller2011': ('tsv', "X1", "wt", None)
 }
-                   
+
 DECAY_CONSTANT_LINKS = {
     'Neymotin2014': "https://rnajournal.cshlp.org/content/suppl/2014/08/08/rna.045104.114.DC1/TableS5.xls",
     'Chan2018': "https://cdn.elifesciences.org/articles/32536/elife-32536-fig1-data2-v4.txt",
@@ -74,7 +79,7 @@ DECAY_CONSTANT_LINKS = {
     'Munchel2011': "https://www.molbiolcell.org/doi/suppl/10.1091/mbc.e11-01-0028/suppl_file/mc-e11-01-0028-s10.xls",
     'Miller2011': "https://www.embopress.org/action/downloadSupplement?doi=10.1038%2Fmsb.2010.112&file=msb2010112-sup-0001.txt"
 }
-                        
+
 # Gene metadata filenames
 GENE_GROUP_FILE = str(DataFile("STable6.tsv"))
 GENE_NAMES_FILE = str(DataFile("yeast_gene_names.tsv"))
@@ -166,7 +171,7 @@ CC_TIME_ORDER = {
     'M-G1': ('G1', 7, 22.5),
     'G1': ('S', 22.5, 39.5),
     'S': ('G2', 39.5, 56.5),
-    'G2': ('M', 56.5, 77.5), 
+    'G2': ('M', 56.5, 77.5),
     'M': ('M-G1', 77.5, 95)
 }
 
@@ -175,7 +180,7 @@ RAPA_TIME_ORDER = {
     '12': ('3', -5, 5),
     '3': ('4', 5, 15),
     '4': ('5', 15, 25),
-    '5': ('6', 25, 35), 
+    '5': ('6', 25, 35),
     '6': ('7', 35, 45),
     '7': ('8', 45, 55)
 }

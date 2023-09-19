@@ -279,7 +279,7 @@ def figure_5_supplement_2_plot(data, save=True):
         for j, dataset2 in enumerate(order[i:]):
             if (i + j) == i:
                 corr_mat[i + j, i] = np.nan
-            
+
     hm_ref = ax_hm.pcolormesh(corr_mat[::-1, :], cmap="Reds", vmin=0, vmax=1)
 
     for i in range(len(order)):
@@ -375,14 +375,14 @@ def figure_5_supplement_3_plot(
 
     ax_lr.add_patch(patches.Rectangle((0, 0), 1, 1, color="lavender"))
     ax_lr.annotate(
-        "Learning Rate ($\gamma$)",
+        r"Learning Rate ($\gamma$)",
         xy=(0.02, 0.92),
         xycoords="axes fraction",
         size=10,
         weight="bold",
     )
     ax_lr.annotate(
-        "($\lambda$ = 1e-7)",
+        r"($\lambda$ = 1e-7)",
         xy=(0.02, 0.85),
         xycoords="axes fraction",
         size=8,
@@ -392,14 +392,14 @@ def figure_5_supplement_3_plot(
 
     ax_wd.add_patch(patches.Rectangle((0, 0), 1, 1, color="mistyrose"))
     ax_wd.annotate(
-        "Weight Decay ($\lambda$)",
+        r"Weight Decay ($\lambda$)",
         xy=(0.02, 0.92),
         xycoords="axes fraction",
         size=10,
         weight="bold",
     )
     ax_wd.annotate(
-        "($\gamma$ = 5e-5)",
+        r"($\gamma$ = 5e-5)",
         xy=(0.02, 0.85),
         xycoords="axes fraction",
         size=8,

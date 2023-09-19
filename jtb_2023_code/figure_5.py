@@ -1,7 +1,6 @@
 import numpy as np
 
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 
 from inferelator_velocity.utils.aggregation import (
     aggregate_sliding_window_times
@@ -19,7 +18,6 @@ from jtb_2023_code.figure_constants import (
 from jtb_2023_code.utils.figure_common import (
     align_ylim,
     velocity_axes,
-    plot_correlations,
     symmetric_ylim
 )
 
@@ -65,7 +63,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
     axd["gene_2_velo"].set_ylabel("Transcript Velocity", y=1.05, size=8)
     axd["gene_2_expr"].set_xlabel("Time (min)", size=8, labelpad=-0.5)
     axd["gene_2_velo"].set_xlabel("Time (min)", size=8, labelpad=39)
-    
+
     axd["schematic"].imshow(
         plt.imread(FIG_DYNAMICAL_FILE_NAME),
         aspect="equal"
@@ -126,6 +124,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
             annotation_loc=(0.6, 0.8),
             predicts_color='cornflowerblue'
         )
+
         plot_gene(
             predicts,
             g,
@@ -143,7 +142,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
         axd[f"gene_{i + 1}_comp"].axvline(
             0, 0, 1, linestyle="--", linewidth=1.0, c="black"
         )
-        axd[f"gene_{i + 1}_comp"].tick_params(labelleft=False) 
+        axd[f"gene_{i + 1}_comp"].tick_params(labelleft=False)
 
         if i == 1:
             axd[f"gene_{i + 1}_expr"].set_xticks(
@@ -170,7 +169,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
         color="black",
         alpha=0.05,
     )
-    
+
     axd["rp_decay"].plot(
         np.arange(-10, 60) + 0.5,
         np.log(2)

@@ -219,14 +219,6 @@ def plot_figure_2(data, save=True):
     axd["rep_cc"].set_yticklabels([])
     axd["rep_cc"].set_xticks([0, 30, 60], [0, 30, 60])
     axd["rep_cc"].tick_params(labelsize=8)
-    #axd["rep_cc"].annotate(
-    #    f"n = {np.sum(data.all_data.obs['Gene'] == 'WT')}",
-    #    xy=(5, 0.2),
-    #    xycoords="data",
-    #    xytext=(0.35, 0.05),
-    #    textcoords="axes fraction",
-    #    fontsize="small",
-    #)
     axd["rep_cc"].axvline(
         0, 0, 1,
         linestyle="--",
@@ -243,7 +235,11 @@ def plot_figure_2(data, save=True):
             axd["pseudotime_palantir"]
         ],
         ["pca", "dpt", "palantir"],
-        labels=[r"($\bf{i}$) PCA", r"($\bf{ii}$) DPT", r"($\bf{iii}$) Palantir"],
+        labels=[
+            r"($\bf{i}$) PCA",
+            r"($\bf{ii}$) DPT",
+            r"($\bf{iii}$) Palantir"
+        ]
     )
 
     axd["pseudotime_palantir"].tick_params(labelsize=8)

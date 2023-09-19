@@ -16,8 +16,7 @@ from jtb_2023_code.figure_constants import (
     GENE_CAT_COLS,
     SUPPLEMENTAL_FIGURE_DPI,
     FIGURE_1_1_SUPPLEMENTAL_FILE_NAME,
-    FIGURE_1_2_SUPPLEMENTAL_FILE_NAME,
-    FIG_RAPA_LEGEND_VERTICAL_FILE_NAME
+    FIGURE_1_2_SUPPLEMENTAL_FILE_NAME
 )
 from jtb_2023_code.utils.figure_common import (
     pool_palette,
@@ -364,17 +363,17 @@ def figure_1_supplement_1_plot(data, save=True):
         vmax=0.1,
     )
 
-    fig_refs[f"umap_4_cbar"] = plt.colorbar(
-        fig_refs[f"umap_4"],
-        cax=axd[f"umap_4_legend"],
+    fig_refs["umap_4_cbar"] = plt.colorbar(
+        fig_refs["umap_4"],
+        cax=axd["umap_4_legend"],
     )
-    axd[f"umap_4_legend"].set_yticks(
+    axd["umap_4_legend"].set_yticks(
         [0, 5000, 10000],
         ["0", "5k", "10k"],
         size=8
     )
-    fig_refs[f"umap_4_cbar"].solids.set(alpha=1)
-    axd[f"umap_4_legend"].set_ylabel(
+    fig_refs["umap_4_cbar"].solids.set(alpha=1)
+    axd["umap_4_legend"].set_ylabel(
         "UMI Counts", size=8
     )
 
@@ -389,7 +388,7 @@ def figure_1_supplement_1_plot(data, save=True):
             size=8
         )
         fig_refs[f"umap_{i}_cbar"].solids.set(alpha=1)
-        
+
     for ax_id, label in supp_1_panel_labels.items():
         if ax_id in supp_1_panel_titles:
             axd[ax_id].set_title(supp_1_panel_titles[ax_id], size=8)
@@ -453,7 +452,6 @@ def figure_1_supplement_2_plot(data, save=True):
         "cat_prop_2": fig.add_axes([_l + _w, 0.1, _w, _h]),
         "cat_prop_3": fig.add_axes([_l + 2 * _w, 0.1, _w, _h]),
         "cat_prop_4": fig.add_axes([_l + 3 * _w, 0.1, _w, _h])
-        #"pool_legend": fig.add_axes([_l + 4 * _w, 0.05, 0.13, 0.25]),
     }
 
     axd["expr_1"].set_title(

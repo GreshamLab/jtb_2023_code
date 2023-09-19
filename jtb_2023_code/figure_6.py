@@ -390,7 +390,7 @@ def plot_figure_6(
 
     axd["gln3_tfa"].set_ylabel("TFA (t=30 minutes)", size=9)
     axd["gln3_tfa"].set_title(
-        "TFA ($\it{In \; silico}$\nTF Deletion)", size=8
+        r"TFA ($\it{In \; silico}$\nTF Deletion)", size=8
     )
     axd["gln3_tfa"].spines["right"].set_color("none")
     axd["gln3_tfa"].spines["top"].set_color("none")

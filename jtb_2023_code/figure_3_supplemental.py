@@ -289,14 +289,14 @@ def figure_3_supplement_2_plot(save=True):
 
     ax_lr.add_patch(patches.Rectangle((0, 0), 1, 1, color="lavender"))
     ax_lr.annotate(
-        "Learning Rate ($\gamma$)",
+        r"Learning Rate ($\gamma$)",
         xy=(0.02, 0.97),
         xycoords="axes fraction",
         size=10,
         weight="bold",
     )
     ax_lr.annotate(
-        "($\lambda$ = 1e-7)",
+        r"($\lambda$ = 1e-7)",
         xy=(0.02, 0.95),
         xycoords="axes fraction",
         size=8,
@@ -338,14 +338,14 @@ def figure_3_supplement_2_plot(save=True):
 
     ax_wd.add_patch(patches.Rectangle((0, 0), 1, 1, color="mistyrose"))
     ax_wd.annotate(
-        "Weight Decay ($\lambda$)",
+        r"Weight Decay ($\lambda$)",
         xy=(0.02, 0.97),
         xycoords="axes fraction",
         size=10,
         weight="bold",
     )
     ax_wd.annotate(
-        "($\gamma$ = 5e-5)",
+        r"($\gamma$ = 5e-5)",
         xy=(0.02, 0.95),
         xycoords="axes fraction",
         size=8,
@@ -487,14 +487,14 @@ def figure_3_supplement_3_plot(save=True):
 
     ax_lr.add_patch(patches.Rectangle((0, 0), 1, 1, color="lavender"))
     ax_lr.annotate(
-        "Learning Rate ($\gamma$)",
+        r"Learning Rate ($\gamma$)",
         xy=(0.02, 0.97),
         xycoords="axes fraction",
         size=10,
         weight="bold",
     )
     ax_lr.annotate(
-        "($\lambda$ = 1e-7)",
+        r"($\lambda$ = 1e-7)",
         xy=(0.02, 0.95),
         xycoords="axes fraction",
         size=8,
@@ -528,14 +528,14 @@ def figure_3_supplement_3_plot(save=True):
 
     ax_wd.add_patch(patches.Rectangle((0, 0), 1, 1, color="mistyrose"))
     ax_wd.annotate(
-        "Weight Decay ($\lambda$)",
+        r"Weight Decay ($\lambda$)",
         xy=(0.02, 0.97),
         xycoords="axes fraction",
         size=10,
         weight="bold",
     )
     ax_wd.annotate(
-        "($\gamma$ = 5e-5)",
+        r"($\gamma$ = 5e-5)",
         xy=(0.02, 0.95),
         xycoords="axes fraction",
         size=8,

@@ -204,7 +204,7 @@ def figure_2_supplement_2_plot(data, save=True):
     axd[0, 0].imshow(plt.imread(SFIG2A_FILE_NAME), aspect="equal")
     axd[0, 0].axis("off")
     axd[0, 0].set_title("A", loc="left", weight="bold", x=-0.05)
-    
+
     for i, expt in enumerate(["all"] + data.expts):
         d = data.all_data if expt == "all" else data.expt_data[expt]
 
@@ -219,7 +219,10 @@ def figure_2_supplement_2_plot(data, save=True):
                 ax=axd[0, 3],
                 text_size=8
             )
-            axd[0, 2].set_title("All Count Data (Both Replicates)", size=8, x=1.3)
+            axd[0, 2].set_title(
+                "All Count Data (Both Replicates)",
+                size=8, x=1.3
+            )
             axd[0, 2].set_title("B", loc="left", weight="bold", x=-0.25)
             axd[0, 2].xaxis.labelpad = -1
             axd[0, 3].xaxis.labelpad = -1
@@ -243,8 +246,8 @@ def figure_2_supplement_2_plot(data, save=True):
                 axd[i, 2*p + 1].xaxis.labelpad = -1
 
                 axd[i, 2*p].set_title(
-                    f"{'Rapamycin' if p == 0 else 'Cell Cycle'} "
-                    f"({expt[1]}{'Δ' if expt[1] == 'fpr1' else ''}, Rep. {expt[0]})",
+                    f"{'Rapamycin' if p == 0 else 'Cell Cycle'} ({expt[1]}"
+                    f"{'Δ' if expt[1] == 'fpr1' else ''}, Rep. {expt[0]})",
                     x=1.35,
                     size=8
                 )
@@ -351,36 +354,36 @@ def figure_2_supplement_5_12_plot(data, save=True):
         range(6, 10),
         [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]
     ):
-        
+
         fig = plt.figure(figsize=(6, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
         _top_y = 0.52
         _bottom_y = 0.05
         _full_h = 0.15
-        _part_h = 0.09
-        _delta = 0.1425
+        _hh = 0.09
+        _d = 0.1425
 
         axd_rapa = {
             "pca1": fig.add_axes([0.08, _top_y + 0.225, 0.18, _full_h]),
             "pca2": fig.add_axes([0.08, _top_y, 0.18, _full_h]),
             "hist": fig.add_axes([0.4, _top_y + 0.225, 0.18, _full_h]),
-            "12 / 3": fig.add_axes([0.67, _top_y + 2 * _delta, 0.12, _part_h]),
-            "3 / 4": fig.add_axes([0.85, _top_y + 2 * _delta, 0.12, _part_h]),
-            "4 / 5": fig.add_axes([0.67, _top_y + _delta, 0.12, _part_h]),
-            "5 / 6": fig.add_axes([0.85, _top_y + _delta, 0.12, _part_h]),
-            "6 / 7": fig.add_axes([0.67, _top_y, 0.12, _part_h]),
-            "7 / 8": fig.add_axes([0.85, _top_y, 0.12, _part_h]),
+            "12 / 3": fig.add_axes([0.67, _top_y + 2 * _d, 0.12, _hh]),
+            "3 / 4": fig.add_axes([0.85, _top_y + 2 * _d, 0.12, _hh]),
+            "4 / 5": fig.add_axes([0.67, _top_y + _d, 0.12, _hh]),
+            "5 / 6": fig.add_axes([0.85, _top_y + _d, 0.12, _hh]),
+            "6 / 7": fig.add_axes([0.67, _top_y, 0.12, _hh]),
+            "7 / 8": fig.add_axes([0.85, _top_y, 0.12, _hh]),
         }
 
         axd_cc = {
             "pca1": fig.add_axes([0.08, _bottom_y + 0.225, 0.18, _full_h]),
             "pca2": fig.add_axes([0.08, _bottom_y, 0.18, _full_h]),
             "hist": fig.add_axes([0.4, _bottom_y + 0.225, 0.18, _full_h]),
-            "M-G1 / G1": fig.add_axes([0.67, _bottom_y + 2 * _delta, 0.12, _part_h]),
-            "G1 / S": fig.add_axes([0.85, _bottom_y + 2 * _delta, 0.12, _part_h]),
-            "S / G2": fig.add_axes([0.67, _bottom_y + _delta, 0.12, _part_h]),
-            "G2 / M": fig.add_axes([0.85, _bottom_y + _delta, 0.12, _part_h]),
-            "M / M-G1": fig.add_axes([0.67, _bottom_y, 0.12, _part_h]),
+            "M-G1 / G1": fig.add_axes([0.67, _bottom_y + 2 * _d, 0.12, _hh]),
+            "G1 / S": fig.add_axes([0.85, _bottom_y + 2 * _d, 0.12, _hh]),
+            "S / G2": fig.add_axes([0.67, _bottom_y + _d, 0.12, _hh]),
+            "G2 / M": fig.add_axes([0.85, _bottom_y + _d, 0.12, _hh]),
+            "M / M-G1": fig.add_axes([0.67, _bottom_y, 0.12, _hh]),
         }
 
         axd_neither = {
@@ -447,7 +450,7 @@ def figure_2_supplement_5_12_plot(data, save=True):
             alpha=0.1 if j[1] == "WT" else 0.5,
             text_size=8
         )
-        
+
         for _axes in [axd_cc, axd_rapa]:
             for k in _axes.keys():
                 if k not in ['pca1', 'pca2', 'hist']:
@@ -467,15 +470,19 @@ def figure_2_supplement_5_12_plot(data, save=True):
             c="black",
             alpha=0.5
         )
-        
-        axd_rapa['12 / 3'].set_title("C", loc='left', weight="bold", size=10, x=-0.2)
+
+        axd_rapa['12 / 3'].set_title(
+            "C", loc='left', weight="bold", size=10, x=-0.2
+        )
         axd_cc['pca1'].set_title("D", loc='left', weight="bold", size=10)
 
         axd_cc['hist'].set_title("E", loc='left', weight="bold", size=10)
         axd_cc['hist'].set_xticks([0, 44, 88], [0, 44, 88], size=8)
         axd_cc['hist'].set_xlabel("Cell Cycle\n(min)", size=8)
 
-        axd_cc['M-G1 / G1'].set_title("F", loc='left', weight="bold", size=10, x=-0.2)
+        axd_cc['M-G1 / G1'].set_title(
+            "F", loc='left', weight="bold", size=10, x=-0.2
+        )
 
         if save:
             fig.savefig(

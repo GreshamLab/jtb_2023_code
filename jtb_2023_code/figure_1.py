@@ -88,7 +88,6 @@ def plot_figure_1(sc_data, save=True):
         )
     )
 
-    #axd["hm"].axvline(0.5, -0.2, 1.2, linestyle="--", color='black')
     axd["hm"].set_ylabel("Genes", size=8)
     axd["hm"].set_xlabel("Time (minutes)", size=8)
     axd["hm"].set_title("Rapamycin Treatment", size=8)
