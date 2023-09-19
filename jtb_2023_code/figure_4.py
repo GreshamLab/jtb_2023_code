@@ -26,17 +26,17 @@ def plot_figure_4(model_data, velo_data, predicts, save=True):
         "Velocity"
     )
 
-    fig = plt.figure(figsize=(6, 2.5), dpi=MAIN_FIGURE_DPI)
+    fig = plt.figure(figsize=(6, 2.75), dpi=MAIN_FIGURE_DPI)
 
     axd = {
-        "gene_1_velo": fig.add_axes([0.07, 0.55, 0.15, 0.35]),
-        "gene_2_velo": fig.add_axes([0.07, 0.1, 0.15, 0.35]),
-        "gene_1_expr": fig.add_axes([0.27, 0.55, 0.15, 0.35]),
-        "gene_2_expr": fig.add_axes([0.27, 0.1, 0.15, 0.35]),
-        "results": fig.add_axes([0.51, 0.35, 0.17, 0.55]),
-        "pca_predicts": fig.add_axes([0.74, 0.1, 0.15, 0.35]),
-        "pca_counts": fig.add_axes([0.74, 0.55, 0.15, 0.35]),
-        "legend": fig.add_axes([0.9, 0.2, 0.1, 0.6]),
+        "results": fig.add_axes([0.08, 0.27, 0.15, 0.63]),
+        "gene_1_velo": fig.add_axes([0.335, 0.55, 0.15, 0.35]),
+        "gene_2_velo": fig.add_axes([0.335, 0.12, 0.15, 0.35]),
+        "gene_1_expr": fig.add_axes([0.56, 0.55, 0.15, 0.35]),
+        "gene_2_expr": fig.add_axes([0.56, 0.12, 0.15, 0.35]),
+        "pca_predicts": fig.add_axes([0.76, 0.12, 0.15, 0.35]),
+        "pca_counts": fig.add_axes([0.76, 0.55, 0.15, 0.35]),
+        "legend": fig.add_axes([0.91, 0.2, 0.1, 0.6]),
     }
 
     rgen = np.random.default_rng(441)
@@ -84,18 +84,26 @@ def plot_figure_4(model_data, velo_data, predicts, save=True):
             time_positive_only=True,
         )
 
-    axd["gene_1_expr"].set_title("Counts", size=8)
     axd["gene_1_expr"].set_title(
-        "B", loc="left", weight="bold", size=8, x=-0.1
+        "C", loc="left", weight="bold", size=8, x=-0.3
     )
-    axd["gene_1_velo"].set_title("Velocity", size=8)
     axd["gene_1_velo"].set_title(
-        "A", loc="left", weight="bold", size=8, x=-0.1)
+        "B", loc="left", weight="bold", size=8, x=-0.3
+    )
+    axd["gene_1_expr"].set_ylim(0, 8)
+    axd["gene_2_expr"].set_ylim(0, 22)
     axd["pca_counts"].set_title("D", loc="left", weight="bold", size=8, x=-0.2)
-    axd["results"].set_title("C", loc="left", weight="bold", size=8)
+    axd["results"].set_title("A", loc="left", weight="bold", size=8, x=-0.5)
 
-    axd["gene_2_expr"].set_xlabel("Time", size=8, labelpad=-3)
-    axd["gene_2_velo"].set_xlabel("Time", size=8, labelpad=30)
+    axd["gene_2_expr"].set_xlabel("Time (min)", size=8, labelpad=-0.5)
+    axd["gene_2_expr"].set_xticks([0, 30, 60], [0, 30, 60], size=8)
+    axd["gene_2_velo"].set_xlabel("Time (min)", size=8, labelpad=42)
+    axd["gene_2_velo"].set_ylabel(
+        "Transcript Velocity", size=8, y=1.05, x=-0.15
+    )
+    axd["gene_2_expr"].set_ylabel(
+        "Transcript Counts", size=8, y=1.05, x=-0.15
+    )
 
     _jitter = rgen.uniform(-0.2, 0.2, summary_results.shape[0])
     axd["results"].scatter(

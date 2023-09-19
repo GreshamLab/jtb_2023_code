@@ -74,7 +74,7 @@ def plot_figure_1(sc_data, save=True):
         "umap_1": fig.add_axes([0.35, 0.08, 0.25, 0.45]),
         "umap_1_legend": fig.add_axes([0.6, 0.08, 0.075, 0.45]),
         "umap_2": fig.add_axes([0.725, 0.08, 0.25, 0.45]),
-        "umap_2_legend": fig.add_axes([0.725, 0.1, 0.1, 0.1]),
+        "umap_2_legend": fig.add_axes([0.735, 0.125, 0.1, 0.1]),
     }
 
     # PLOT HEATMAP #
@@ -88,9 +88,10 @@ def plot_figure_1(sc_data, save=True):
         )
     )
 
+    #axd["hm"].axvline(0.5, -0.2, 1.2, linestyle="--", color='black')
     axd["hm"].set_ylabel("Genes", size=8)
     axd["hm"].set_xlabel("Time (minutes)", size=8)
-    axd["hm"].set_title("Rapamycin Response", size=8)
+    axd["hm"].set_title("Rapamycin Treatment", size=8)
     axd["hm"].set_title("A", loc="left", x=-0.1, weight="bold")
 
     # DRAW SCHEMATIC #
@@ -117,7 +118,6 @@ def plot_figure_1(sc_data, save=True):
         size=1,
     )
 
-    axd["umap_1"].set_title("Collection Time", size=8)
     axd["umap_1"].set_xlabel("UMAP1", size=8)
     axd["umap_1"].set_ylabel("UMAP2", size=8)
     axd["umap_1"].set_title("C", loc="left", weight="bold")
@@ -128,10 +128,9 @@ def plot_figure_1(sc_data, save=True):
         size=7,
     )
 
-    axd["umap_2"].set_title("Expt. Replicate", size=8)
     axd["umap_2"].tick_params(labelsize=8)
     axd["umap_2"].set_xlabel("UMAP1", size=8)
-    axd["umap_2"].set_xlabel("UMAP2", size=8)
+    axd["umap_2"].set_ylabel("UMAP2", size=8)
     axd["umap_2"].set_title("D", loc="left", weight="bold")
 
     axd["umap_1_legend"].imshow(
@@ -145,6 +144,7 @@ def plot_figure_1(sc_data, save=True):
         sc_data.all_data.obs["Experiment"].dtype.categories.values,
         loc="center",
         bbox_to_anchor=None,
+        title="Replicate"
     )
     axd["umap_2_legend"].axis("off")
 

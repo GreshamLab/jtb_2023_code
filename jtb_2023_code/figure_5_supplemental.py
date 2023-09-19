@@ -204,11 +204,11 @@ def figure_5_supplement_2_plot(data, save=True):
         :, 1:9
     ].mean(1)
 
-    pubbed["Jackson2023"] = np.log(2) / _calc_decays
+    pubbed["This Work"] = np.log(2) / _calc_decays
     pubbed = pubbed.dropna()
 
     order = [
-        "Jackson2023",
+        "This Work",
         "Neymotin2014",
         "Chan2018",
         "Miller2011",
@@ -229,31 +229,6 @@ def figure_5_supplement_2_plot(data, save=True):
                 pubbed[dataset2],
                 pubbed[dataset]
             ).statistic
-
-    hm_ref = ax_hm.pcolormesh(corr_mat[::-1, :], cmap="Reds", vmin=0, vmax=1)
-
-    for i in range(len(order)):
-        for j in range(len(order) - i):
-            ax_hm.text(
-                j + 0.5,
-                i + 0.5,
-                f"{corr_mat[::-1][i, j]:.2f}",
-                horizontalalignment="center",
-                verticalalignment="center",
-                size=4,
-            )
-
-    ax_hm.set_xticks(np.arange(len(order)) + 0.5, order, rotation=90, size=6)
-
-    ax_hm.set_yticks(np.arange(len(order)) + 0.5, order[::-1], size=6)
-
-    axd[0, 0].set_title("A", loc="left", weight="bold", size=8, y=0.85, x=-0.4)
-    ax_hm.set_title("B", loc="left", weight="bold", size=8)
-
-    plt.colorbar(hm_ref, ax_hm_cbar)
-    ax_hm_cbar.set_yticks([0, 1], [0, 1], size=8)
-    ax_hm_cbar.tick_params(axis="y", length=2, pad=1)
-    ax_hm_cbar.set_title("ρ", size=8)
 
     for i, dataset in enumerate(order):
         axd[i, 0].set_ylabel(dataset, size=6)
@@ -299,6 +274,38 @@ def figure_5_supplement_2_plot(data, save=True):
 
         for k in range(i):
             axd[k, i].axis("off")
+
+    for i, dataset in enumerate(order):
+        for j, dataset2 in enumerate(order[i:]):
+            if (i + j) == i:
+                corr_mat[i + j, i] = np.nan
+            
+    hm_ref = ax_hm.pcolormesh(corr_mat[::-1, :], cmap="Reds", vmin=0, vmax=1)
+
+    for i in range(len(order)):
+        for j in range(len(order) - i):
+            _val = corr_mat[::-1][i, j]
+            if not np.isnan(_val):
+                ax_hm.text(
+                    j + 0.5,
+                    i + 0.5,
+                    f"{corr_mat[::-1][i, j]:.2f}",
+                    horizontalalignment="center",
+                    verticalalignment="center",
+                    size=4,
+                )
+
+    ax_hm.set_xticks(np.arange(len(order)) + 0.5, order, rotation=90, size=6)
+
+    ax_hm.set_yticks(np.arange(len(order)) + 0.5, order[::-1], size=6)
+
+    axd[0, 0].set_title("A", loc="left", weight="bold", size=8, y=0.85, x=-0.4)
+    ax_hm.set_title("B", loc="left", weight="bold", size=8)
+
+    plt.colorbar(hm_ref, ax_hm_cbar)
+    ax_hm_cbar.set_yticks([0, 1], [0, 1], size=8)
+    ax_hm_cbar.tick_params(axis="y", length=2, pad=1)
+    ax_hm_cbar.set_title("ρ", size=8)
 
     if save:
         fig.savefig(

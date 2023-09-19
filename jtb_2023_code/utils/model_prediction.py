@@ -459,6 +459,7 @@ def plot_gene(
     alpha=0.02,
     annotation_loc=(0.65, 0.6),
     gene_data_hook=None,
+    predicts_color='red'
 ):
     fig_refs = {}
 
@@ -473,7 +474,7 @@ def plot_gene(
     _time = d.obs["program_rapa_time"].values[test_idx]
 
     if predicts:
-        _color = np.array(["red"] * d.shape[0])
+        _color = np.array([predicts_color] * d.shape[0])
     else:
         _color = to_pool_colors(d.obs["Pool"]).astype(str)
 

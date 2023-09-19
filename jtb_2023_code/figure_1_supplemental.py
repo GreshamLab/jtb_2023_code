@@ -42,12 +42,7 @@ supp_1_panel_labels = {
 
 
 supp_1_panel_titles = {
-    "ncells": "# Cells",
-    "ncounts": "# Counts [UMI] / Cell",
-    "umap_1": "Time (Pool)",
-    "umap_2": "Cell Cycle",
-    "umap_3": "Genotype",
-    "umap_4": "# Counts [UMI] / Cell",
+    "umap_4": "Count Depth",
     "umap_5": "RP/RiBi Expression",
     "umap_6": "iESR Expression",
 }
@@ -128,8 +123,8 @@ def figure_1_supplement_1_plot(data, save=True):
     fig = plt.figure(figsize=(5, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     axd = {
-        "ncells": fig.add_axes([0.1, 0.875, 0.7, 0.1]),
-        "ncounts": fig.add_axes([0.1, 0.725, 0.7, 0.1]),
+        "ncells": fig.add_axes([0.15, 0.875, 0.65, 0.1]),
+        "ncounts": fig.add_axes([0.15, 0.725, 0.65, 0.1]),
         "legend_a": fig.add_axes([0.81, 0.725, 0.13, 0.25]),
         "umap_1": fig.add_axes([0.05, 0.5, 0.30, 0.175]),
         "umap_2": fig.add_axes([0.55, 0.5, 0.30, 0.175]),
@@ -140,13 +135,13 @@ def figure_1_supplement_1_plot(data, save=True):
         "umap_1_legend": fig.add_axes([0.35, 0.5, 0.1, 0.175]),
         "umap_2_legend": fig.add_axes([0.85, 0.5, 0.1, 0.175]),
         "umap_3_legend": fig.add_axes([0.35, 0.275, 0.1, 0.175]),
-        "umap_4_legend": fig.add_axes([0.86, 0.275, 0.025, 0.175]),
-        "umap_5_legend": fig.add_axes([0.36, 0.05, 0.025, 0.175]),
-        "umap_6_legend": fig.add_axes([0.86, 0.05, 0.025, 0.175]),
+        "umap_4_legend": fig.add_axes([0.86, 0.275, 0.02, 0.175]),
+        "umap_5_legend": fig.add_axes([0.36, 0.05, 0.02, 0.175]),
+        "umap_6_legend": fig.add_axes([0.86, 0.05, 0.02, 0.175]),
     }
 
-    axd["umap_1_legend"].legend(
-        title="Time (Pool)",
+    fig_refs['umap1legend'] = axd["umap_1_legend"].legend(
+        title="Time\n(Interval)",
         handles=_patches(pool_palette()),
         labels=[str(x) for x in range(1, 9)],
         frameon=False,
@@ -155,11 +150,12 @@ def figure_1_supplement_1_plot(data, save=True):
         title_fontsize=8,
         handlelength=1,
         handleheight=1,
-        borderaxespad=0,
+        borderaxespad=0
     )
+    fig_refs['umap1legend'].get_title().set_multialignment('center')
 
-    axd["umap_2_legend"].legend(
-        title="Phase",
+    fig_refs['umap2legend'] = axd["umap_2_legend"].legend(
+        title="Cell Cycle\nPhase",
         handles=_patches(cc_palette()),
         labels=["G1/M", "G1", "S", "G2", "M"],
         frameon=False,
@@ -170,11 +166,12 @@ def figure_1_supplement_1_plot(data, save=True):
         handleheight=1,
         borderaxespad=0,
     )
+    fig_refs['umap2legend'].get_title().set_multialignment('center')
 
     axd["umap_3_legend"].legend(
         title="Genotype",
         handles=_patches(strain_palette()),
-        labels=["WT", "fpr1"],
+        labels=["WT", "fpr1Δ"],
         frameon=False,
         loc="center left",
         fontsize=8,
@@ -214,7 +211,7 @@ def figure_1_supplement_1_plot(data, save=True):
         np.arange(8) + width * 0.5,
         cell_counts.loc[1].loc["fpr1"].sort_index().values,
         width,
-        label="1 [fpr1]",
+        label="1 [fpr1Δ]",
         color=expt_palette(long=True)[2],
     )
 
@@ -222,16 +219,17 @@ def figure_1_supplement_1_plot(data, save=True):
         np.arange(8) + width * 1.5,
         cell_counts.loc[2].loc["fpr1"].sort_index().values,
         width,
-        label="2 [fpr1]",
+        label="2 [fpr1Δ]",
         color=expt_palette(long=True)[3],
     )
-
+    axd["ncells"].set_ylabel("# Cells", size=8)
     axd["ncells"].set_xticks(np.arange(8), labels=np.arange(8) + 1)
+    axd["ncells"].set_yticks([0, 5000, 10000], ["0", "5k", "10k"])
 
     fig_refs["ncells_legend"] = axd["legend_a"].legend(
         title="Expt. Rep.",
         handles=_patches(expt_palette(long=True)),
-        labels=["1 [WT]", "2 [WT]", "1 [fpr1]", "2 [fpr1]"],
+        labels=["1 (WT)", "2 (WT)", "1 (fpr1Δ)", "2 (fpr1Δ)"],
         frameon=False,
         loc="center left",
         fontsize=8,
@@ -292,8 +290,10 @@ def figure_1_supplement_1_plot(data, save=True):
             pc.set_facecolor(expt_palette(long=True)[i])
             pc.set_alpha(0.75)
 
+    axd["ncounts"].set_ylabel("UMI Counts /\nCell", size=8)
     axd["ncounts"].set_xticks(np.arange(8), labels=np.arange(8) + 1)
     axd["ncounts"].set_ylim([0, 10000])
+    axd["ncounts"].set_yticks([0, 5000, 10000], ["0", "5k", "10k"])
 
     # PANELS C-H #
 
@@ -364,18 +364,45 @@ def figure_1_supplement_1_plot(data, save=True):
         vmax=0.1,
     )
 
-    for i in range(4, 7):
+    fig_refs[f"umap_4_cbar"] = plt.colorbar(
+        fig_refs[f"umap_4"],
+        cax=axd[f"umap_4_legend"],
+    )
+    axd[f"umap_4_legend"].set_yticks(
+        [0, 5000, 10000],
+        ["0", "5k", "10k"],
+        size=8
+    )
+    fig_refs[f"umap_4_cbar"].solids.set(alpha=1)
+    axd[f"umap_4_legend"].set_ylabel(
+        "UMI Counts", size=8
+    )
+
+    for i in range(5, 7):
         fig_refs[f"umap_{i}_cbar"] = plt.colorbar(
             fig_refs[f"umap_{i}"],
             cax=axd[f"umap_{i}_legend"],
         )
         axd[f"umap_{i}_legend"].tick_params(labelsize=8)
+        axd[f"umap_{i}_legend"].set_ylabel(
+            "Count Fraction",
+            size=8
+        )
         fig_refs[f"umap_{i}_cbar"].solids.set(alpha=1)
-
+        
     for ax_id, label in supp_1_panel_labels.items():
-        axd[ax_id].set_title(supp_1_panel_titles[ax_id], size=8)
-        axd[ax_id].set_title(label, loc="left", weight="bold", size=10)
+        if ax_id in supp_1_panel_titles:
+            axd[ax_id].set_title(supp_1_panel_titles[ax_id], size=8)
+
+        axd[ax_id].set_title(label, loc="left", weight="bold", size=10, x=-0.1)
         axd[ax_id].tick_params(axis="both", which="major", labelsize=8)
+
+    axd["ncells"].set_title(
+        "A", loc="left", weight="bold", size=10, x=-0.2
+    )
+    axd["ncounts"].set_title(
+        "B", loc="left", weight="bold", size=10, x=-0.2
+    )
 
     if save:
         fig.savefig(
@@ -411,7 +438,7 @@ def figure_1_supplement_2_plot(data, save=True):
         "expr_2": fig.add_axes([_l + _w, 0.76, _w, _h]),
         "expr_3": fig.add_axes([_l + 2 * _w, 0.76, _w, _h]),
         "expr_4": fig.add_axes([_l + 3 * _w, 0.76, _w, _h]),
-        "expr_cbar": fig.add_axes([_l + 4 * _w + 0.01, 0.76, 0.025, _h]),
+        "expr_cbar": fig.add_axes([_l + 4 * _w + 0.01, 0.76, 0.015, _h]),
         "cc_1": fig.add_axes([_l, 0.54, _w, _h]),
         "cc_2": fig.add_axes([_l + _w, 0.54, _w, _h]),
         "cc_3": fig.add_axes([_l + 2 * _w, 0.54, _w, _h]),
@@ -425,14 +452,9 @@ def figure_1_supplement_2_plot(data, save=True):
         "cat_prop_1": fig.add_axes([_l, 0.1, _w, _h]),
         "cat_prop_2": fig.add_axes([_l + _w, 0.1, _w, _h]),
         "cat_prop_3": fig.add_axes([_l + 2 * _w, 0.1, _w, _h]),
-        "cat_prop_4": fig.add_axes([_l + 3 * _w, 0.1, _w, _h]),
-        "pool_legend": fig.add_axes([_l + 4 * _w, 0.05, 0.13, 0.25]),
+        "cat_prop_4": fig.add_axes([_l + 3 * _w, 0.1, _w, _h])
+        #"pool_legend": fig.add_axes([_l + 4 * _w, 0.05, 0.13, 0.25]),
     }
-
-    axd["pool_legend"].imshow(
-        plt.imread(FIG_RAPA_LEGEND_VERTICAL_FILE_NAME), aspect="equal"
-    )
-    axd["pool_legend"].axis("off")
 
     axd["expr_1"].set_title(
         "A", loc="left", weight="bold", size=10, x=-0.1
@@ -456,10 +478,10 @@ def figure_1_supplement_2_plot(data, save=True):
     axd["cat_prop_1"].set_ylabel("% Gene Expression", size=8)
     axd["cat_prop_1"].tick_params(axis="both", which="major", labelsize=8)
 
-    axd["expr_2"].set_xlabel("Time (Pool)", size=8, x=1)
-    axd["cc_2"].set_xlabel("Time (Pool)", size=8, x=1)
-    axd["cat_2"].set_xlabel("Time (Pool)", size=8, x=1)
-    axd["cat_prop_2"].set_xlabel("Time (Pool)", size=8, x=1)
+    axd["expr_2"].set_xlabel("Time (Interval)", size=8, x=1)
+    axd["cc_2"].set_xlabel("Time (Interval)", size=8, x=1)
+    axd["cat_2"].set_xlabel("Time (Interval)", size=8, x=1)
+    axd["cat_prop_2"].set_xlabel("Time (Interval)", size=8, x=1)
 
     plot_y_order = cluster_on_rows(
         _mean_by_pool(data.expt_data[(1, "WT")], lfc_threshold=0.5).T
@@ -485,7 +507,16 @@ def figure_1_supplement_2_plot(data, save=True):
             list(range(1, 9)),
             size=8
         )
-        axd[f"expr_{i}"].set_title(f"Expt. {k[0]}: {k[1]}", size=8)
+        axd[f"expr_{i}"].axvline(
+            1.5, 0, 1,
+            linestyle="--",
+            linewidth=1.0,
+            c="black"
+        )
+        axd[f"expr_{i}"].set_title(
+            f"Expt. {k[0]}: {k[1]}{'Δ' if k[1] == 'fpr1' else ''}",
+            size=8
+        )
 
         fig_refs[f"cc_{i}"] = plot_stacked_barplot(
             _get_cc_bar_data(data.expt_data[k]),

@@ -31,13 +31,13 @@ def plot_figure_2(data, save=True):
     _bottom_y = 0.15
     _top_h = 0.325
     _top_y = 0.59
-    _pt_hist_left = 0.3
-    _pt_hist_width = 0.6
+    _pt_hist_left = 0.35
+    _pt_hist_width = 0.55
 
     axd = {
         "rows": fig.add_axes([0.01, _top_y, 0.025, _top_h]),
-        "matrix": fig.add_axes([0.035, _top_y, 0.22, _top_h]),
-        "info_cbar": fig.add_axes([0.265, _top_y, 0.015, _top_h]),
+        "matrix": fig.add_axes([0.04, _top_y, 0.21, _top_h]),
+        "info_cbar": fig.add_axes([0.255, _top_y, 0.015, _top_h]),
         "rep_t": fig.add_axes([0.415, _top_y, 0.23, _top_h]),
         "rep_cc": fig.add_axes([0.67, _top_y, 0.23, _top_h]),
         "method_hm": fig.add_axes([0.02, _bottom_y, 0.12, _bottom_h]),
@@ -192,17 +192,17 @@ def plot_figure_2(data, save=True):
         alpha=0.2,
     )
 
-    axd["rep_t"].set_ylabel("Cell Cycle [min]", size=8)
+    axd["rep_t"].set_ylabel("Assigned\nCell Cycle Time (min)", size=8)
     axd["rep_t"].set_title("Collection Time", size=8)
     axd["rep_t"].set_xlabel(
-        "Rapamycin Response [min]",
-        labelpad=-1,
+        "Assigned Rapamycin Time (min)",
         size=8,
         x=1
     )
     axd["rep_t"].set_xlim(-10, 60)
     axd["rep_t"].set_ylim(0, CC_LENGTH)
     axd["rep_t"].set_yticks([0, int(CC_LENGTH / 2), CC_LENGTH])
+    axd["rep_t"].set_xticks([0, 30, 60], [0, 30, 60])
     axd["rep_t"].tick_params(labelsize=8)
     axd["rep_t"].axvline(
         0, 0, 1,
@@ -217,15 +217,16 @@ def plot_figure_2(data, save=True):
     axd["rep_cc"].set_ylim(0, CC_LENGTH)
     axd["rep_cc"].set_yticks([0, int(CC_LENGTH / 2), CC_LENGTH])
     axd["rep_cc"].set_yticklabels([])
+    axd["rep_cc"].set_xticks([0, 30, 60], [0, 30, 60])
     axd["rep_cc"].tick_params(labelsize=8)
-    axd["rep_cc"].annotate(
-        f"n = {np.sum(data.all_data.obs['Gene'] == 'WT')}",
-        xy=(5, 0.2),
-        xycoords="data",
-        xytext=(0.35, 0.05),
-        textcoords="axes fraction",
-        fontsize="small",
-    )
+    #axd["rep_cc"].annotate(
+    #    f"n = {np.sum(data.all_data.obs['Gene'] == 'WT')}",
+    #    xy=(5, 0.2),
+    #    xycoords="data",
+    #    xytext=(0.35, 0.05),
+    #    textcoords="axes fraction",
+    #    fontsize="small",
+    #)
     axd["rep_cc"].axvline(
         0, 0, 1,
         linestyle="--",
@@ -242,11 +243,12 @@ def plot_figure_2(data, save=True):
             axd["pseudotime_palantir"]
         ],
         ["pca", "dpt", "palantir"],
-        labels=["PCA", "DPT", "Palantir"],
+        labels=[r"($\bf{i}$) PCA", r"($\bf{ii}$) DPT", r"($\bf{iii}$) Palantir"],
     )
 
     axd["pseudotime_palantir"].tick_params(labelsize=8)
     axd["pseudotime_palantir"].set_xlabel("Pseudotime", size=8)
+    axd["pseudotime_dpt"].set_ylabel("# Cells", size=8)
 
     hm_data = _make_method_heatmap_data(data).reindex(hm_labels.keys())
 

@@ -120,6 +120,7 @@ def add_legend_in_plot(
         mode=None,
         title=title,
         fontsize=8,
+        title_fontsize=8,
         markerscale=0.75,
     )
 

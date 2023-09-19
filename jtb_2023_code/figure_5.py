@@ -26,89 +26,46 @@ from jtb_2023_code.utils.figure_common import (
 
 def plot_figure_5(model_data, velo_data, predicts, save=True):
 
-    fig = plt.figure(figsize=(8, 5), dpi=MAIN_FIGURE_DPI)
-
-    y_top = 0.55
-    y_top_2 = 0.19
-    x_top = 0.4
-    x_top_delta = 0.15
-    h_top = 0.16
-    w_top = 0.10
-
-    y_bottom = 0.1
-    h_bottom = 0.35
+    fig = plt.figure(figsize=(8, 2.5), dpi=MAIN_FIGURE_DPI)
 
     axd = {
         "schematic": fig.add_axes(
-            [0.05, y_top, 0.3, 0.35]
+            [0, 0, 0.3, 0.95]
         ),
         "gene_1_expr": fig.add_axes(
-            [x_top, y_top + y_top_2, w_top, h_top]
+            [0.35, 0.55, 0.10, 0.35]
         ),
         "gene_2_expr": fig.add_axes(
-            [x_top, y_top, w_top, h_top]
+            [0.35, 0.12, 0.10, 0.35]
         ),
         "gene_1_velo": fig.add_axes(
-            [x_top + x_top_delta, y_top + y_top_2, w_top, h_top]
+            [0.52, 0.55, 0.10, 0.35]
         ),
         "gene_2_velo": fig.add_axes(
-            [x_top + x_top_delta, y_top, w_top, h_top]
+            [0.52, 0.12, 0.10, 0.35]
         ),
         "gene_1_comp": fig.add_axes(
-            [x_top + 2 * x_top_delta, y_top + y_top_2, w_top, h_top]
+            [0.64, 0.55, 0.10, 0.35]
         ),
         "gene_2_comp": fig.add_axes(
-            [x_top + 2 * x_top_delta, y_top, w_top, h_top]
-        ),
-        "gene_1_decay": fig.add_axes(
-            [x_top + 3 * x_top_delta, y_top + y_top_2, w_top, h_top]
-        ),
-        "gene_2_decay": fig.add_axes(
-            [x_top + 3 * x_top_delta, y_top, w_top, h_top]
+            [0.64, 0.12, 0.10, 0.35]
         ),
         "rp_decay": fig.add_axes(
-            [0.525, y_bottom, 0.18, h_bottom]
-        ),
-        "decay_cat": fig.add_axes(
-            [0.06, y_bottom, 0.015, h_bottom]
-        ),
-        "decay_corr": fig.add_axes(
-            [0.08, y_bottom, 0.18, h_bottom]
-        ),
-        "count_corr": fig.add_axes(
-            [0.265, y_bottom, 0.18, h_bottom]
-        ),
-        "rp_corr_count": fig.add_axes(
-            [0.73, 0.3, 0.09, 0.15]
-        ),
-        "rp_corr_velo": fig.add_axes(
-            [0.83, 0.3, 0.09, 0.15]
-        ),
-        "rp_corr_trans": fig.add_axes(
-            [0.73, y_bottom, 0.09, 0.15]
-        ),
-        "rp_corr_decay": fig.add_axes(
-            [0.83, y_bottom, 0.09, 0.15]
-        ),
-        "corr_cbar": fig.add_axes(
-            [0.95, y_bottom + 0.03, 0.01, h_bottom - 0.06]
-        ),
+            [0.8, 0.15, 0.18, 0.72]
+        )
     }
 
-    axd["schematic"].set_title("A", loc="left", weight="bold", y=1.03)
+    axd["schematic"].set_title("A", loc="left", weight="bold")
     axd["gene_1_expr"].set_title("B", loc="left", weight="bold", x=-0.28)
     axd["gene_1_velo"].set_title("C", loc="left", weight="bold", x=-0.28)
-    axd["gene_1_comp"].set_title("D", loc="left", weight="bold", x=-0.28)
-    axd["gene_1_decay"].set_title("E", loc="left", weight="bold", x=-0.28)
-    axd["gene_1_expr"].set_title("Expression\n(Counts)", size=8)
-    axd["gene_1_velo"].set_title("Velocity\n(Counts/Min)", size=8)
-    axd["gene_1_comp"].set_title("Components\n(Counts/Min)", size=8)
-    axd["gene_1_decay"].set_title("Half-Life\n(Min)", size=8)
+    axd["gene_1_comp"].set_title("D", loc="left", weight="bold", x=-0.18)
+    axd["rp_decay"].set_title("E", loc="left", weight="bold", x=-0.28, y=1.045)
 
-    axd["rp_decay"].set_title("G", loc="left", weight="bold", x=-0.28)
-    axd["decay_corr"].set_title("F", loc="left", weight="bold", x=-0.18)
-    axd["rp_corr_count"].set_title("H", loc="left", weight="bold", x=-0.28)
-
+    axd["gene_2_expr"].set_ylabel("Transcript Counts", y=1.05, size=8)
+    axd["gene_2_velo"].set_ylabel("Transcript Velocity", y=1.05, size=8)
+    axd["gene_2_expr"].set_xlabel("Time (min)", size=8, labelpad=-0.5)
+    axd["gene_2_velo"].set_xlabel("Time (min)", size=8, labelpad=39)
+    
     axd["schematic"].imshow(
         plt.imread(FIG_DYNAMICAL_FILE_NAME),
         aspect="equal"
@@ -167,6 +124,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
             predicts=True,
             time_positive_only=False,
             annotation_loc=(0.6, 0.8),
+            predicts_color='cornflowerblue'
         )
         plot_gene(
             predicts,
@@ -177,6 +135,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
             predicts=True,
             time_positive_only=False,
             annotation_loc=None,
+            predicts_color="violet"
         )
 
         align_ylim(axd[f"gene_{i + 1}_velo"], axd[f"gene_{i + 1}_comp"])
@@ -184,22 +143,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
         axd[f"gene_{i + 1}_comp"].axvline(
             0, 0, 1, linestyle="--", linewidth=1.0, c="black"
         )
-
-        plot_gene(
-            predicts,
-            g,
-            axd[f"gene_{i + 1}_decay"],
-            rgen,
-            layer="biophysical_predict_decay_constant",
-            predicts=True,
-            time_positive_only=False,
-            annotation_loc=(0.6, 0.8) if i == 1 else (0.6, 0.2),
-            gene_data_hook=lambda x: np.log(2) / x * -1,
-        )
-        axd[f"gene_{i + 1}_decay"].set_ylim(0, 60)
-        axd[f"gene_{i + 1}_decay"].axvline(
-            0, 0, 1, linestyle="--", linewidth=1.0, c="black"
-        )
+        axd[f"gene_{i + 1}_comp"].tick_params(labelleft=False) 
 
         if i == 1:
             axd[f"gene_{i + 1}_expr"].set_xticks(
@@ -207,68 +151,9 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
                 [0, 30, 60],
                 size=8
             )
-            axd[f"gene_{i + 1}_decay"].set_xticks(
-                [0, 30, 60],
-                [0, 30, 60],
-                size=8
-            )
 
-    plot_correlations(
-        predicts.layers["biophysical_predict_decay_constant"],
-        axd["decay_corr"],
-        cmap="bwr",
-        cat_ax=axd["decay_cat"],
-        cat_cmap=colors.ListedColormap(["lightgray", "red"]),
-        cat_var=model_data.var["RP"].astype(int).values,
-    )
-
-    _corr_ref, _all_idx = plot_correlations(
-        predicts.layers["biophysical_predict_decay_constant"],
-        axd["decay_corr"],
-        cmap="bwr",
-        cat_ax=axd["decay_cat"],
-        cat_cmap=colors.ListedColormap(["lightgray", "red"]),
-        cat_var=model_data.var["RP"].astype(int).values,
-    )
-
-    plot_correlations(
-        predicts.layers["biophysical_predict_counts"],
-        axd["count_corr"],
-        cmap="bwr",
-        plot_index=_all_idx,
-    )
-
-    _corr_ref, _rp_idx = plot_correlations(
-        predicts.layers["biophysical_predict_decay_constant"][
-            :, model_data.var["RP"]
-        ],
-        axd["rp_corr_decay"],
-    )
-
-    plot_correlations(
-        predicts.layers["biophysical_predict_counts"][
-            :, model_data.var["RP"]
-        ],
-        axd["rp_corr_count"],
-        plot_index=_rp_idx,
-    )
-
-    plot_correlations(
-        predicts.layers["biophysical_predict_transcription"][
-            :, model_data.var["RP"]
-        ],
-        axd["rp_corr_trans"],
-        plot_index=_rp_idx,
-    )
-
-    plot_correlations(
-        predicts.layers["biophysical_predict_velocity"][
-            :, model_data.var["RP"]
-        ],
-        axd["rp_corr_velo"],
-        plot_index=_rp_idx,
-    )
-
+    axd['gene_2_velo'].set_ylim(-1, 1)
+    axd['gene_2_comp'].set_ylim(-1, 1)
     axd["rp_decay"].plot(
         np.arange(-10, 60) + 0.5,
         np.log(2)
@@ -283,31 +168,37 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
         )[0]
         * -1,
         color="black",
-        alpha=0.1,
+        alpha=0.05,
     )
-
-    axd["decay_cat"].set_xticks([0.5], ["RP"], size=8, rotation=90)
-    axd["decay_cat"].tick_params(axis="x", pad=2)
-
+    
+    axd["rp_decay"].plot(
+        np.arange(-10, 60) + 0.5,
+        np.log(2)
+        / aggregate_sliding_window_times(
+            predicts.layers["biophysical_predict_decay_constant"][
+                :, model_data.var_names == "YOR063W"
+            ],
+            predicts.obs["program_rapa_time"],
+            width=1,
+            centers=np.arange(-10, 60) + 0.5,
+            agg_kwargs={"axis": 0},
+        )[0]
+        * -1,
+        color="crimson"
+    )
+    axd["rp_decay"].annotate(
+        "RPL3",
+        (0.75, 0.33),
+        xycoords="axes fraction",
+        color="crimson",
+        size=8
+    )
     axd["rp_decay"].set_ylim(0, 60)
     axd["rp_decay"].set_ylabel("Half-life (min)", size=8)
-    axd["rp_decay"].set_title("Ribosomal Protein (RP)\nHalf-Life", size=8)
+    axd["rp_decay"].set_title("Ribosomal Protein (RP)\nStability", size=8)
     axd["rp_decay"].set_xticks([0, 30, 60], [0, 30, 60], size=8)
-    axd["rp_decay"].set_xlabel("Treatment Time (min)", size=8)
+    axd["rp_decay"].set_xlabel("Time (min)", size=8)
     axd["rp_decay"].axvline(0, 0, 1, linestyle="--", linewidth=1.0, c="black")
-
-    axd["decay_corr"].set_title("Correlation\n(Decay)", size=8)
-    axd["count_corr"].set_title("Correlation\n(Expression)", size=8)
-
-    axd["rp_corr_decay"].set_title("Decay", size=8, y=0.9)
-    axd["rp_corr_count"].set_title("Expression", size=8, y=0.9)
-    axd["rp_corr_velo"].set_title("Velocity", size=8, y=0.9)
-    axd["rp_corr_trans"].set_title("Transcription", size=8, y=0.9)
-
-    plt.colorbar(_corr_ref, axd["corr_cbar"])
-    axd["corr_cbar"].set_yticks([-1, 0, 1], [-1, 0, 1], size=8)
-    axd["corr_cbar"].tick_params(axis="y", length=2, pad=1)
-    axd["corr_cbar"].set_title("ρ", size=8)
 
     if save:
         fig.savefig(FIGURE_5_FILE_NAME + ".png", facecolor="white")

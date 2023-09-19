@@ -290,66 +290,70 @@ class FigureSingleCellData:
                         print(f"Writing Single Cell Data to {v}")
                     self.expt_data[k].write(v)
 
-    def load_pseudotime(self, files=PSEUDOTIME_FILES):
-        # LOAD FLATFILES #
-        print("Loading pseudotime flatfiles")
-        loaded_data = [
-            _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
-            for k, (fn, has_idx) in PSEUDOTIME_FILES.items()
-        ]
+    def load_pseudotime(self, files=PSEUDOTIME_FILES, reload=False):
 
-        for i, k in enumerate(PSEUDOTIME_FILES.keys()):
-            loaded_data[i].index = loaded_data[i].index.astype(str)
-            loaded_data[i].columns = _pd.MultiIndex.from_tuples(
-                [(k[0], k[1], c) for c in loaded_data[i].columns],
-                names=("method", "denoised", "values"),
+        if reload or 'pseudotime' not in self.all_data.obsm:
+            # LOAD FLATFILES #
+            print("Loading pseudotime flatfiles")
+            loaded_data = [
+                _pd.read_csv(fn, sep="\t", index_col=0 if has_idx else None)
+                for k, (fn, has_idx) in PSEUDOTIME_FILES.items()
+            ]
+
+            for i, k in enumerate(PSEUDOTIME_FILES.keys()):
+                loaded_data[i].index = loaded_data[i].index.astype(str)
+                loaded_data[i].columns = _pd.MultiIndex.from_tuples(
+                    [(k[0], k[1], c) for c in loaded_data[i].columns],
+                    names=("method", "denoised", "values"),
+                )
+
+                if k[0] == "palantir" and not k[1]:
+                    loaded_data[i] = _select_palantir_dcs(loaded_data[i])
+
+            print("Calculating PCA pseudotimes")
+            for i in range(2):
+                pca_pt = _pd.DataFrame(
+                    _np.nan,
+                    index=self.all_data.obs_names,
+                    columns=_pd.MultiIndex.from_tuples([("pca", i == 1, "pca")]),
+                    dtype=float,
+                )
+
+                for k in self.expts:
+                    pca_pt.loc[self._all_data_expt_index(*k), :] = get_pca_pt(
+                        self.expt_data[k] if i == 0 else self.denoised_data(*k),
+                        pca_key="X_pca" if i == 0 else "denoised_pca",
+                    ).reshape(-1, 1)
+
+                loaded_data.append(pca_pt)
+
+            loaded_data = _pd.concat(loaded_data, axis=1)
+
+            # Store column names in a dataframe
+            self.all_data.uns["pseudotime_columns"] = _pd.DataFrame(
+                loaded_data.columns.to_flat_index().tolist()
             )
 
-            if k[0] == "palantir" and not k[1]:
-                loaded_data[i] = _select_palantir_dcs(loaded_data[i])
-
-        print("Calculating PCA pseudotimes")
-        for i in range(2):
-            pca_pt = _pd.DataFrame(
-                _np.nan,
-                index=self.all_data.obs_names,
-                columns=_pd.MultiIndex.from_tuples([("pca", i == 1, "pca")]),
-                dtype=float,
+            self.all_data.uns["pseudotime_columns"].index = self.all_data.uns[
+                "pseudotime_columns"
+            ].index.astype(str)
+            self.all_data.uns["pseudotime_columns"].columns = (
+                "method",
+                "denoised",
+                "values",
             )
 
-            for k in self.expts:
-                pca_pt.loc[self._all_data_expt_index(*k), :] = get_pca_pt(
-                    self.expt_data[k] if i == 0 else self.denoised_data(*k),
-                    pca_key="X_pca" if i == 0 else "denoised_pca",
-                ).reshape(-1, 1)
+            loaded_data.columns = _pd.Index(
+                list(range(len(loaded_data.columns)))
+            ).astype(
+                str
+            )
 
-            loaded_data.append(pca_pt)
+            self.all_data.obsm["pseudotime"] = loaded_data
 
-        loaded_data = _pd.concat(loaded_data, axis=1)
+            self.save()
 
-        # Store column names in a dataframe
-        self.all_data.uns["pseudotime_columns"] = _pd.DataFrame(
-            loaded_data.columns.to_flat_index().tolist()
-        )
-
-        self.all_data.uns["pseudotime_columns"].index = self.all_data.uns[
-            "pseudotime_columns"
-        ].index.astype(str)
-        self.all_data.uns["pseudotime_columns"].columns = (
-            "method",
-            "denoised",
-            "values",
-        )
-
-        loaded_data.columns = _pd.Index(
-            list(range(len(loaded_data.columns)))
-        ).astype(
-            str
-        )
-
-        self.all_data.obsm["pseudotime"] = loaded_data
-
-        self.save()
+        return self
 
     def calculate_pseudotime_rho(self):
         print("Calculating spearman rho for pseudotimes")

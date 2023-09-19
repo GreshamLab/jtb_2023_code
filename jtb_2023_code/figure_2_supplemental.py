@@ -12,6 +12,7 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 from jtb_2023_code.utils.figure_common import (
     pool_palette,
@@ -22,6 +23,8 @@ from jtb_2023_code.utils.figure_common import (
 from jtb_2023_code.figure_constants import (
     FIG_CC_LEGEND_VERTICAL_FILE_NAME,
     FIG_RAPA_LEGEND_VERTICAL_FILE_NAME,
+    FIG_RAPA_LEGEND_FILE_NAME,
+    FIG_CC_LEGEND_FILE_NAME,
     CC_LENGTH_DATA_FILE,
     FIGURE_2_SUPPLEMENTAL_FILE_NAME,
     SFIG2A_FILE_NAME,
@@ -151,8 +154,6 @@ def figure_2_supplement_14_plot(save=True):
         color="red",
     )
 
-    ax.set_title("Doubling Time (YPD)", size=8)
-
     ax.annotate(
         f"$t_d$ = {1 / _lsq[0]:.2f} ± {_se:.2f}\nn = 6",
         (0.25, 0.12),
@@ -165,8 +166,8 @@ def figure_2_supplement_14_plot(save=True):
         ["2e6", "5e6", "1e7", "2e7"],
     )
     ax.tick_params(axis="both", which="major", labelsize=8)
-    ax.set_xlabel("Time [min]", size=8)
-    ax.set_ylabel("Conc. [cells / mL]", size=8)
+    ax.set_xlabel("Time (min)", size=8)
+    ax.set_ylabel("Cells / mL", size=8)
 
     for gd, marker in zip(
         growth_data.groupby("Replicate"), ["o", "^", "<", "s", "X", "D"]
@@ -189,108 +190,69 @@ def figure_2_supplement_14_plot(save=True):
 def figure_2_supplement_2_plot(data, save=True):
     # BUILD PLOT #
 
-    layout = [
-        [".", ".", ".", "title_all", "title_all"],
-        ["schema", "schema", ".", "mcv_all_0", "cum_var_all_0"],
-        [".", ".", ".", ".", "."],
-        ["title_0_1", "title_0_1", ".", "title_1_1", "title_1_1"],
-        ["mcv_0_1", "cum_var_0_1", ".", "mcv_1_1", "cum_var_1_1"],
-        [".", ".", ".", ".", "."],
-        ["title_0_2", "title_0_2", ".", "title_1_2", "title_1_2"],
-        ["mcv_0_2", "cum_var_0_2", ".", "mcv_1_2", "cum_var_1_2"],
-        [".", ".", ".", ".", "."],
-        ["title_0_3", "title_0_3", ".", "title_1_3", "title_1_3"],
-        ["mcv_0_3", "cum_var_0_3", ".", "mcv_1_3", "cum_var_1_3"],
-        [".", ".", ".", ".", "."],
-        ["title_0_4", "title_0_4", ".", "title_1_4", "title_1_4"],
-        ["mcv_0_4", "cum_var_0_4", ".", "mcv_1_4", "cum_var_1_4"],
-        ["xaxis_lab_0", "xaxis_lab_0", ".", "xaxis_lab_1", "xaxis_lab_1"],
-    ]
-
-    panel_labels = {
-        "schema": "A",
-        "title_all": "B",
-        "title_0_1": "C",
-        "title_0_2": "D",
-        "title_0_3": "E",
-        "title_0_4": "F",
-    }
-
-    pad_height = 0.5
-
-    fig, axd = plt.subplot_mosaic(
-        layout,
-        gridspec_kw=dict(
-            width_ratios=[1, 1, 0.15, 1, 1],
-            height_ratios=[
-                0.005, 1, pad_height,
-                0.005, 1, pad_height,
-                0.005, 1, pad_height,
-                0.005, 1, pad_height,
-                0.005, 1, 0.01,
-            ],
-            wspace=1.5,
-            hspace=0.25,
-        ),
-        figsize=(6, 9),
+    fig, axd = plt.subplots(
+        5, 4,
+        figsize=(6, 8),
         dpi=SUPPLEMENTAL_FIGURE_DPI,
+        gridspec_kw={"wspace": 0.7, "hspace": 0.8}
     )
 
-    for ax_id, label in panel_labels.items():
-        axd[ax_id].set_title(label, loc="left", weight="bold", x=-0.35)
+    axd[0, 0].remove()
+    axd[0, 1].remove()
+    axd[0, 0] = fig.add_axes([0.125, 0.775, 0.35, 0.12])
 
-    axd["schema"].imshow(plt.imread(SFIG2A_FILE_NAME), aspect="equal")
-    axd["schema"].axis("off")
-
-    axd["xaxis_lab_0"].set_title("# Comps", fontsize=10, y=-50)
-    axd["xaxis_lab_0"].axis("off")
-
-    axd["xaxis_lab_1"].set_title("# Comps", fontsize=10, y=-50)
-    axd["xaxis_lab_1"].axis("off")
-
+    axd[0, 0].imshow(plt.imread(SFIG2A_FILE_NAME), aspect="equal")
+    axd[0, 0].axis("off")
+    axd[0, 0].set_title("A", loc="left", weight="bold", x=-0.05)
+    
     for i, expt in enumerate(["all"] + data.expts):
         d = data.all_data if expt == "all" else data.expt_data[expt]
 
         if i == 0:
-            mcv_plot(d, ax=axd["mcv_all_0"], add_labels=False)
+            mcv_plot(
+                d,
+                ax=axd[0, 2],
+                text_size=8
+            )
             cumulative_variance_plot(
                 d,
-                ax=axd["cum_var_all_0"],
-                add_labels=False
+                ax=axd[0, 3],
+                text_size=8
             )
-
-            axd["title_all"].set_title("Combined Data")
-            axd["title_all"].axis("off")
-            axd["mcv_all_0"].set_ylabel("MSE")
-            axd["cum_var_all_0"].set_ylabel("% Var.")
-
+            axd[0, 2].set_title("All Count Data (Both Replicates)", size=8, x=1.3)
+            axd[0, 2].set_title("B", loc="left", weight="bold", x=-0.25)
+            axd[0, 2].xaxis.labelpad = -1
+            axd[0, 3].xaxis.labelpad = -1
         else:
-            for j, p in enumerate(["0", "1"]):
+            axd[i, 0].set_title(chr(i + 66), loc="left", weight="bold", x=-0.1)
+            for j, p in enumerate([0, 1]):
                 mcv_plot(
                     d,
-                    ax=axd[f"mcv_{j}_{i}"],
+                    ax=axd[i, 2*p],
                     program=p,
-                    add_labels=False
+                    text_size=8
                 )
                 cumulative_variance_plot(
                     d,
-                    ax=axd[f"cum_var_{j}_{i}"],
+                    ax=axd[i, 2*p + 1],
                     program=p,
-                    add_labels=False
+                    text_size=8
                 )
-                axd[f"mcv_{j}_{i}"].set_ylabel("MSE")
-                axd[f"cum_var_{j}_{i}"].set_ylabel("% Var.")
-                axd[f"title_{j}_{i}"].set_title(
-                    f"{'Rapamycin' if p == '0' else 'Cell Cycle'} "
-                    f"({expt[1]} [{expt[0]}]) MCV"
+
+                axd[i, 2*p].xaxis.labelpad = -1
+                axd[i, 2*p + 1].xaxis.labelpad = -1
+
+                axd[i, 2*p].set_title(
+                    f"{'Rapamycin' if p == 0 else 'Cell Cycle'} "
+                    f"({expt[1]}{'Δ' if expt[1] == 'fpr1' else ''}, Rep. {expt[0]})",
+                    x=1.35,
+                    size=8
                 )
-                axd[f"title_{j}_{i}"].axis("off")
 
     if save:
         fig.savefig(
             FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_3.png",
-            facecolor="white",
-            bbox_inches="tight",
+            facecolor="white"
         )
 
     return fig
@@ -379,76 +341,101 @@ def figure_2_supplement_3_plot(adata, save=True):
 
 
 def figure_2_supplement_5_12_plot(data, save=True):
+
     figs = []
 
     cc_program = data.all_data.uns["programs"]["cell_cycle_program"]
     rapa_program = data.all_data.uns["programs"]["rapa_program"]
 
     for i, j in zip(
-        range(6, 14, 2),
+        range(6, 10),
         [(1, "WT"), (2, "WT"), (1, "fpr1"), (2, "fpr1")]
     ):
-        _layout = [
-            ["pca1", "M-G1 / G1", "G1 / S"],
-            ["pca2", "S / G2", "G2 / M"],
-            ["hist", "M / M-G1", "cbar"],
-        ]
+        
+        fig = plt.figure(figsize=(6, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
-        fig, ax = plt.subplot_mosaic(
-            _layout,
-            gridspec_kw=dict(
-                width_ratios=[1] * len(_layout[0]),
-                height_ratios=[1, 1, 1],
-                wspace=0.25,
-                hspace=0.35,
-            ),
-            figsize=(6, 8),
-            dpi=SUPPLEMENTAL_FIGURE_DPI,
+        _top_y = 0.52
+        _bottom_y = 0.05
+        _full_h = 0.15
+        _part_h = 0.09
+        _delta = 0.1425
+
+        axd_rapa = {
+            "pca1": fig.add_axes([0.08, _top_y + 0.225, 0.18, _full_h]),
+            "pca2": fig.add_axes([0.08, _top_y, 0.18, _full_h]),
+            "hist": fig.add_axes([0.4, _top_y + 0.225, 0.18, _full_h]),
+            "12 / 3": fig.add_axes([0.67, _top_y + 2 * _delta, 0.12, _part_h]),
+            "3 / 4": fig.add_axes([0.85, _top_y + 2 * _delta, 0.12, _part_h]),
+            "4 / 5": fig.add_axes([0.67, _top_y + _delta, 0.12, _part_h]),
+            "5 / 6": fig.add_axes([0.85, _top_y + _delta, 0.12, _part_h]),
+            "6 / 7": fig.add_axes([0.67, _top_y, 0.12, _part_h]),
+            "7 / 8": fig.add_axes([0.85, _top_y, 0.12, _part_h]),
+        }
+
+        axd_cc = {
+            "pca1": fig.add_axes([0.08, _bottom_y + 0.225, 0.18, _full_h]),
+            "pca2": fig.add_axes([0.08, _bottom_y, 0.18, _full_h]),
+            "hist": fig.add_axes([0.4, _bottom_y + 0.225, 0.18, _full_h]),
+            "M-G1 / G1": fig.add_axes([0.67, _bottom_y + 2 * _delta, 0.12, _part_h]),
+            "G1 / S": fig.add_axes([0.85, _bottom_y + 2 * _delta, 0.12, _part_h]),
+            "S / G2": fig.add_axes([0.67, _bottom_y + _delta, 0.12, _part_h]),
+            "G2 / M": fig.add_axes([0.85, _bottom_y + _delta, 0.12, _part_h]),
+            "M / M-G1": fig.add_axes([0.67, _bottom_y, 0.12, _part_h]),
+        }
+
+        axd_neither = {
+            "rapa_cbar": fig.add_axes([0.29, _top_y, 0.3, _full_h]),
+            "cc_cbar": fig.add_axes([0.29, _bottom_y, 0.3, _full_h]),
+            "rapa_a": fig.add_axes([0.035, 0.48, 0.245, 0.455], zorder=-3),
+            "rapa_b": fig.add_axes([0.29, 0.675, 0.31, 0.26], zorder=-3),
+            "rapa_c": fig.add_axes([0.61, 0.48, 0.38, 0.455], zorder=-3),
+            "cc_a": fig.add_axes([0.035, 0, 0.245, 0.465], zorder=-3),
+            "cc_b": fig.add_axes([0.29, 0.205, 0.31, 0.26], zorder=-3),
+            "cc_c": fig.add_axes([0.61, 0, 0.38, 0.465], zorder=-3)
+        }
+
+        # Draw highlight boxes
+        for pref in ['rapa', 'cc']:
+            for p, c in zip(
+                ['a', 'b', 'c'],
+                ["lightcyan", "navajowhite", "lightsteelblue"]
+            ):
+                axd_neither[f"{pref}_{p}"].add_patch(
+                    patches.Rectangle((0, 0), 1, 1, color=c)
+                )
+                axd_neither[f"{pref}_{p}"].axis('off')
+
+        axd_neither['rapa_cbar'].imshow(
+            plt.imread(FIG_RAPA_LEGEND_FILE_NAME),
+            aspect="equal"
         )
+        axd_neither['rapa_cbar'].axis('off')
+
+        axd_neither['cc_cbar'].imshow(
+            plt.imread(FIG_CC_LEGEND_FILE_NAME),
+            aspect="equal"
+        )
+        axd_neither['cc_cbar'].axis('off')
 
         program_time_summary(
             data.expt_data[j],
             cc_program,
             cluster_order=CC_COLS,
             cluster_colors={k: v for k, v in zip(CC_COLS, cc_palette())},
-            cbar_title="Phase",
-            ax=ax,
+            ax=axd_cc,
             alpha=0.1 if j[1] == "WT" else 0.5,
+            text_size=8
         )
 
-        fig.suptitle(f"Cell Cycle Program Replicate {j[0]} [{j[1]}]")
-
-        if save:
-            fig.savefig(
-                FIGURE_2_SUPPLEMENTAL_FILE_NAME + f"_{i}.png",
-                facecolor="white"
-            )
-
-        figs.append(fig)
-
-        _layout = [
-            ["pca1", "12 / 3", "3 / 4"],
-            ["pca2", "4 / 5", "5 / 6"],
-            ["hist", "6 / 7", "7 / 8"],
-            ["cbar", "cbar", "cbar"],
-        ]
-
-        fig, ax = plt.subplot_mosaic(
-            _layout,
-            gridspec_kw=dict(
-                width_ratios=[1] * len(_layout[0]),
-                height_ratios=[1, 1, 1, 0.2],
-                wspace=0.25,
-                hspace=0.35,
-            ),
-            figsize=(6, 8),
-            dpi=SUPPLEMENTAL_FIGURE_DPI,
+        fig.suptitle(
+            f"Experimental Replicate {j[0]} "
+            f"({j[1]}{'Δ' if j[1] == 'fpr1' else ''})"
         )
 
         program_time_summary(
             data.expt_data[j],
             rapa_program,
-            ax=ax,
+            ax=axd_rapa,
             cluster_order=["12", "3", "4", "5", "6", "7", "8"],
             cluster_colors={
                 k: v
@@ -456,17 +443,43 @@ def figure_2_supplement_5_12_plot(data, save=True):
                     ["12", "3", "4", "5", "6", "7", "8"], pool_palette()[1:]
                 )
             },
-            cbar_title="Time [Groups]",
-            cbar_horizontal=True,
             time_limits=(-15, 70),
             alpha=0.1 if j[1] == "WT" else 0.5,
+            text_size=8
         )
+        
+        for _axes in [axd_cc, axd_rapa]:
+            for k in _axes.keys():
+                if k not in ['pca1', 'pca2', 'hist']:
+                    _axes[k].set_title(k, size=8)
+                if k == 'hist':
+                    _axes[k].set_ylabel("# Cells", size=8)
 
-        fig.suptitle(f"Rapamycin Response Program Replicate {j[0]} [{j[1]}]")
+        axd_rapa['pca1'].set_title("A", loc='left', weight="bold", size=10)
+
+        axd_rapa['hist'].set_title("B", loc='left', weight="bold", size=10)
+        axd_rapa['hist'].set_xticks([0, 30, 60], [0, 30, 60], size=8)
+        axd_rapa['hist'].set_xlabel("Rapamycin Treatment\n(min)", size=8)
+        axd_rapa['hist'].axvline(
+            0, 0, 1,
+            linestyle="--",
+            linewidth=1.0,
+            c="black",
+            alpha=0.5
+        )
+        
+        axd_rapa['12 / 3'].set_title("C", loc='left', weight="bold", size=10, x=-0.2)
+        axd_cc['pca1'].set_title("D", loc='left', weight="bold", size=10)
+
+        axd_cc['hist'].set_title("E", loc='left', weight="bold", size=10)
+        axd_cc['hist'].set_xticks([0, 44, 88], [0, 44, 88], size=8)
+        axd_cc['hist'].set_xlabel("Cell Cycle\n(min)", size=8)
+
+        axd_cc['M-G1 / G1'].set_title("F", loc='left', weight="bold", size=10, x=-0.2)
 
         if save:
             fig.savefig(
-                FIGURE_2_SUPPLEMENTAL_FILE_NAME + f"_{i + 1}.png",
+                FIGURE_2_SUPPLEMENTAL_FILE_NAME + f"_{i}.png",
                 facecolor="white"
             )
 
@@ -614,7 +627,7 @@ def figure_2_supplement_13_plot(data, save=True):
 
     if save:
         fig.savefig(
-            FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_14.png",
+            FIGURE_2_SUPPLEMENTAL_FILE_NAME + "_10.png",
             facecolor="white",
             bbox_inches="tight",
         )
@@ -667,7 +680,7 @@ def figure_2_supplement_4_plot(data_obj, save=True):
         ticks=[0, np.floor(raw_data.max())],
     )
 
-    fig_refs["rapa_cbar"].set_label("$log_2$(Pseudocount)", labelpad=-1)
+    fig_refs["rapa_cbar"].set_label("log$_2$(Counts + 1)", labelpad=-1)
 
     del raw_data
     del tick_locations
@@ -702,7 +715,7 @@ def figure_2_supplement_4_plot(data_obj, save=True):
         ticks=[0, np.floor(raw_data.max())],
     )
 
-    fig_refs["cc_cbar"].set_label("$log_2$(Pseudocount)", labelpad=-1)
+    fig_refs["cc_cbar"].set_label("log$_2$(Counts + 1)", labelpad=-1)
 
     if save:
         fig.savefig(
