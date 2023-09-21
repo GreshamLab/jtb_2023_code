@@ -12,7 +12,7 @@ FigureFile.set_path("~/Documents/jtb_2022_code/Figures/")
 ScratchFile.set_path("/scratch/cj59/RAPA/")
 
 MAIN_FIGURE_DPI = 600
-SUPPLEMENTAL_FIGURE_DPI = 600
+SUPPLEMENTAL_FIGURE_DPI = 300
 
 # Print status updates
 VERBOSE = True

@@ -388,7 +388,11 @@ def _to_dataloader(
 ):
     test_idx = model_data.obs["Test"].values
 
-    _data = model_data.layers[layer][test_idx, :]
+    if layer == "X":
+        _data = model_data.X[test_idx, :]
+
+    else:
+        _data = model_data.layers[layer][test_idx, :]
 
     try:
         _data = _data.A

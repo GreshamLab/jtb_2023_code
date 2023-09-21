@@ -26,8 +26,8 @@ def figure_6_supplement_1_plot(predictions, rapa, save=True):
         for j, (_tf, _tf_common, _tf_name) in enumerate(
             [
                 (None, "WT(ho)", "WT"),
-                ("YER040W", "gln3", "Δgln3"),
-                ("YEL009C", "gcn4", "Δgcn4"),
+                ("YER040W", "gln3", "gln3Δ"),
+                ("YEL009C", "gcn4", "gcn4Δ"),
             ]
         ):
             _plot_elife_predicts(
