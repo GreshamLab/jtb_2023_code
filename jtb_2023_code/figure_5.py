@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 
 from inferelator_velocity.utils.aggregation import (
     aggregate_sliding_window_times
@@ -21,7 +20,6 @@ from jtb_2023_code.figure_constants import (
 from jtb_2023_code.utils.figure_common import (
     align_ylim,
     velocity_axes,
-    plot_correlations,
     symmetric_ylim,
     cluster_on_rows
 )
@@ -30,19 +28,19 @@ from jtb_2023_code.utils.model_prediction import _to_dataloader
 
 
 def _heatmap_data(data, var_names, times=None, lfc=True):
-    
+
     _d = pd.DataFrame(data, columns=var_names)
-    
+
     if times is not None:
         _d = _d.groupby(times).agg('mean')
-    
+
     if lfc:
         _untreated = _d.iloc[0:10, :].mean(0)
         _d = _d.divide(_untreated, axis=1)
         _d = np.log2(_d)
         _d_good = np.all(np.isfinite(_d), 0)
         _d = _d.loc[:, _d_good]
-        
+
     return _d
 
 
@@ -121,11 +119,17 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
     axd["rp_decay"].set_title("E", loc="left", weight="bold", x=-0.28, y=1.085)
     axd["expr_actual"].set_title("F", loc="left", weight="bold", x=-0.1)
     axd["expr_predict"].set_title("G", loc="left", weight="bold", x=-0.05)
-    axd["transcription_predict"].set_title("H", loc="left", weight="bold", x=-0.05)
+    axd["transcription_predict"].set_title(
+        "H", loc="left", weight="bold", x=-0.05
+    )
     axd["decay_predict"].set_title("I", loc="left", weight="bold", x=-0.05)
 
-    axd["gene_2_expr"].set_ylabel("Transcript Counts (X)", y=1.05, labelpad=-0.75, size=8)
-    axd["gene_2_velo"].set_ylabel("Transcript Velocity (dX/dt)", y=1.05, labelpad=-0.75, size=8)
+    axd["gene_2_expr"].set_ylabel(
+        "Transcript Counts (X)", y=1.05, labelpad=-0.75, size=8
+    )
+    axd["gene_2_velo"].set_ylabel(
+        "Transcript Velocity (dX/dt)", y=1.05, labelpad=-0.75, size=8
+    )
     axd["gene_2_expr"].set_xlabel("Time (min)", size=8, labelpad=-0.5)
     axd["gene_2_velo"].set_xlabel("Time (min)", size=8, labelpad=34)
     axd["gene_2_comp"].set_xlabel("Time (min)", size=8, labelpad=34)
@@ -223,7 +227,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
         axd[f"gene_{i + 1}_comp"].axvline(
             0, 0, 1, linestyle="--", linewidth=1.0, c="black"
         )
-        axd[f"gene_{i + 1}_comp"].tick_params(labelleft=False) 
+        axd[f"gene_{i + 1}_comp"].tick_params(labelleft=False)
 
         if i == 1:
             axd[f"gene_{i + 1}_expr"].set_xticks(
@@ -277,17 +281,19 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
     )
     axd["rp_decay"].set_ylim(0, 60)
     axd["rp_decay"].set_ylabel("Half-life (min)", labelpad=-1, size=8)
-    axd["rp_decay"].set_title("Ribosomal Protein (RP)\nTranscript Stability", size=8)
+    axd["rp_decay"].set_title(
+        "Ribosomal Protein (RP)\nTranscript Stability",
+        size=8
+    )
     axd["rp_decay"].set_xticks([0, 30, 60], [0, 30, 60], size=8)
     axd["rp_decay"].set_xlabel("Time (min)", size=8)
     axd["rp_decay"].axvline(0, 0, 1, linestyle="--", linewidth=1.0, c="black")
-    
-    
+
     obs = _heatmap_data(
         _to_dataloader(model_data, layer="X", untreated_only=False).mean(0),
         predicts.var_names
     )
-    preds =  _heatmap_data(
+    preds = _heatmap_data(
         predicts.layers['biophysical_predict_counts'],
         predicts.var_names,
         times=predicts.obs['program_rapa_time'].values,
@@ -405,24 +411,50 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
     axd['expr_actual'].set_title("Observed\nExpression", size=8)
     axd['expr_actual'].set_ylabel("Transcripts", size=8)
     axd['expr_predict'].set_title("Predicted\nExpression", size=8)
-    axd['transcription_predict'].set_title("Predicted\nTranscription Rate", size=8)
+    axd['transcription_predict'].set_title(
+        "Predicted\nTranscription Rate",
+        size=8
+    )
     axd['decay_predict'].set_title("Predicted\nRNA Half-Life ", size=8)
     axd["expr_actual_cat"].set_xlabel("Time (min)", size=8, labelpad=-1)
     axd["expr_predict_cat"].set_xlabel("Time (min)", size=8, labelpad=-1)
-    axd["transcription_predict_cat"].set_xlabel("Time (min)", size=8, labelpad=-1)
+    axd["transcription_predict_cat"].set_xlabel(
+        "Time (min)", size=8, labelpad=-1
+    )
     axd["decay_predict_cat"].set_xlabel("Time (min)", size=8, labelpad=-1)
 
-    _heatmap_axes(axd['expr_actual'], x_ticks=False)
-    _heatmap_axes(axd['expr_actual_cat'])
-
-    _heatmap_axes(axd['expr_predict'], x_ticks=False)
-    _heatmap_axes(axd['expr_predict_cat'])
-
-    _heatmap_axes(axd['transcription_predict'], has_untreated=False, x_ticks=False)
-    _heatmap_axes(axd['transcription_predict_cat'], has_untreated=False)
-
-    _heatmap_axes(axd['decay_predict'], has_untreated=False, x_ticks=False)
-    _heatmap_axes(axd['decay_predict_cat'], has_untreated=False)
+    _heatmap_axes(
+        axd['expr_actual'],
+        x_ticks=False
+    )
+    _heatmap_axes(
+        axd['expr_actual_cat']
+    )
+    _heatmap_axes(
+        axd['expr_predict'],
+        x_ticks=False
+    )
+    _heatmap_axes(
+        axd['expr_predict_cat']
+    )
+    _heatmap_axes(
+        axd['transcription_predict'],
+        has_untreated=False,
+        x_ticks=False
+    )
+    _heatmap_axes(
+        axd['transcription_predict_cat'],
+        has_untreated=False
+    )
+    _heatmap_axes(
+        axd['decay_predict'],
+        has_untreated=False,
+        x_ticks=False
+    )
+    _heatmap_axes(
+        axd['decay_predict_cat'],
+        has_untreated=False
+    )
 
     if save:
         fig.savefig(FIGURE_5_FILE_NAME + ".png", facecolor="white")
