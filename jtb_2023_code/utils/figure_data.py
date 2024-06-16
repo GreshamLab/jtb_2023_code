@@ -10,6 +10,8 @@ import scanpy as _sc
 import scipy as _sp
 import inferelator_velocity as _ifv
 
+from scself import standardize_data
+
 from ..figure_constants import (
     RAPA_SINGLE_CELL_EXPR_BY_EXPT,
     RAPA_SINGLE_CELL_EXPR_PROCESSED,
@@ -44,7 +46,6 @@ from .projection_common import (
     do_pca,
     do_umap
 )
-from .dewakss_common import run_dewakss
 from .decay_common import (
     calc_decays,
     calc_decay_windows,
@@ -58,6 +59,8 @@ from .velocity_common import calculate_velocities
 from .pseudotime_common import spearman_rho_pools, get_pca_pt
 from .process_published_data import process_all_decay_links
 from sklearn.metrics import pairwise_distances
+
+NO_RP_DEPTH = 2000
 
 
 class FigureSingleCellData:
@@ -144,7 +147,7 @@ class FigureSingleCellData:
         _opt_idx = (
             ptr[["method", "mean_rho"]].groupby(
                 ["method"]
-            ).transform(max)["mean_rho"]
+            ).transform('max')["mean_rho"]
             == ptr["mean_rho"]
         )
         return ptr[_opt_idx].set_index("method", drop=True)
@@ -208,7 +211,7 @@ class FigureSingleCellData:
         if VERBOSE:
             print(f"Reading Single Cell Data from {fn}")
 
-        self._all_data = _ad.read(fn)
+        self._all_data = _ad.read_h5ad(fn)
 
         if VERBOSE and _first_load:
             print(
@@ -225,7 +228,7 @@ class FigureSingleCellData:
         if _first_load:
             self.apply_inplace_to_everything(
                 self._normalize,
-                n_counts=int(self.all_data.obs["n_counts"].median())
+                n_counts=NO_RP_DEPTH
             )
             self.save()
 
@@ -249,7 +252,7 @@ class FigureSingleCellData:
             if _os.path.exists(v) and not force_extraction_from_all:
                 if VERBOSE:
                     print(f"Reading Single Cell Experiment Data from {v}")
-                self._expt_data[k] = _ad.read(v)
+                self._expt_data[k] = _ad.read_h5ad(v)
 
             else:
                 e, g = k
@@ -263,12 +266,18 @@ class FigureSingleCellData:
                 ].copy()
 
     @staticmethod
-    def _normalize(adata, n_counts=None):
+    def _normalize(adata, n_counts=None, method='log'):
         adata.layers["counts"] = adata.X.copy()
-        adata.X = adata.X.astype(float)
 
-        _sc.pp.normalize_per_cell(adata, counts_per_cell_after=n_counts)
-        _sc.pp.log1p(adata)
+        standardize_data(
+            adata,
+            method=method,
+            target_sum=n_counts,
+            subset_genes_for_depth=~(adata.var['RP'] | adata.var['RiBi'])
+        )
+               
+        if (method == 'scale') or (method == 'log_scale'):
+            adata.var['scale_factor'] = adata.var['X_scale_factor']
 
         return adata
 
@@ -320,8 +329,15 @@ class FigureSingleCellData:
                 )
 
                 for k in self.expts:
+
+                    if (i == 1) and 'denoised_pca' not in self.expt_data[k].obsm.keys():
+                        _dnd = self.denoised_data(*k)
+                        _sc.pp.pca(_dnd, n_comps=5)
+                        self.expt_data[k].obsm['denoised_pca'] = _dnd.obsm['X_pca']
+                        del _dnd
+
                     pca_pt.loc[self._all_data_expt_index(*k), :] = get_pca_pt(
-                        self.expt_data[k] if i == 0 else self.denoised_data(*k),
+                        self.expt_data[k],
                         pca_key="X_pca" if i == 0 else "denoised_pca",
                     ).reshape(-1, 1)
 
@@ -421,7 +437,7 @@ class FigureSingleCellData:
 
         if _os.path.exists(_fn):
             print(f"Loading velocity data from {_fn}")
-            return _ad.read(_fn)
+            return _ad.read_h5ad(_fn)
 
         else:
             print(f"{_fn} not found. Generating velocity data:")
@@ -432,8 +448,7 @@ class FigureSingleCellData:
             v_adata = _ad.AnnData(
                 self.denoised_data(expt, gene).X.astype(_np.float32),
                 obs=_eref.obs.copy(),
-                var=_eref.var.copy(),
-                dtype=_np.float32,
+                var=_eref.var.copy()
             )
 
             v_adata.obsp["noise2self_distance_graph"] = (
@@ -620,15 +635,14 @@ class FigureSingleCellData:
 
         if _os.path.exists(_fn):
             print(f"Loading denoised data from {_fn}")
-            return _ad.read(_fn)
+            return _ad.read_h5ad(_fn)
 
         else:
             print(f"{_fn} not found. Generating denoised data:")
             adata = _ad.AnnData(
                 self.expt_data[(expt, gene)].layers["counts"].copy(),
                 obs=self.expt_data[(expt, gene)].obs.copy(),
-                var=self.expt_data[(expt, gene)].var.copy(),
-                dtype=int,
+                var=self.expt_data[(expt, gene)].var.copy()
             )
 
             self.process_programs()
@@ -638,11 +652,18 @@ class FigureSingleCellData:
                     "noise2self_distance_graph"
                 ].copy()
             )
-
-            run_dewakss(
+            
+            adata = self._normalize(
                 adata,
-                n_counts=int(self.all_data.obs["n_counts"].median())
+                method='depth',
+                n_counts=NO_RP_DEPTH
             )
+
+            _ifv.denoise(
+                adata,
+                output_layer='X'
+            )
+
             adata.write(_fn)
 
             return adata
@@ -704,8 +725,13 @@ class FigureSingleCellData:
                 self.all_data,
                 layer="counts",
                 metric="cosine",
-                normalize=True,
                 verbose=True,
+                standardization_method='scale',
+                standardization_kwargs=dict(
+                    target_sum=NO_RP_DEPTH,
+                    subset_genes_for_depth=~(self.all_data.var['RP'] | self.all_data.var['RiBi'])
+                ),
+                filter_to_hvg=True
             )
 
             if _np.sum(self.all_data.var["programs"] == "0") > _np.sum(
@@ -720,17 +746,23 @@ class FigureSingleCellData:
 
             self.apply_inplace_to_expts(self._transfer_programs)
 
-        if "noise2self_distance_graph" not in self.expt_data[(1, "WT")].obsp:
+        self.process_graphs()
+        self.process_times(recalculate=recalculate)
+            
+    def process_graphs(self, recalculate=False):
+        if recalculate or "noise2self_distance_graph" not in self.expt_data[(1, "WT")].obsp:
             self.apply_inplace_to_expts(
                 _ifv.global_graph,
                 neighbors=N_NEIGHBORS,
                 npcs=N_PCS,
                 connectivity=True,
                 verbose=True,
+                standardization_method='scale'
             )
 
+            self.save()
             self.process_times(recalculate=True)
-
+            
     def process_times(self, recalculate=False):
         _rapa_program = self.all_data.uns["programs"]["rapa_program"]
         _cc_program = self.all_data.uns["programs"]["cell_cycle_program"]
@@ -745,6 +777,9 @@ class FigureSingleCellData:
                 layer="counts",
                 wrap_time={_rapa_program: None, _cc_program: CC_LENGTH},
                 verbose=True,
+                standardization_method='scale',
+                mcv_kwargs=dict(standardization_method='scale'),
+                nan_on_error=True
             )
 
             def _sort_out_times(adata):
@@ -776,10 +811,7 @@ class FigureSingleCellData:
                 ] = self.expt_data[k].obs[f"program_{_cc_program}_time"]
 
             # Assign the remaining genes
-            (
-                self.all_data.var["programs"],
-                self.all_data.varm["gene_program_mi"],
-            ) = _ifv.assign_genes_to_programs(
+            self.all_data.var["programs"] = _ifv.assign_genes_to_programs(
                 self.all_data,
                 default_program=self.all_data.uns["programs"]["rapa_program"],
                 default_threshold=0.1,
@@ -787,7 +819,8 @@ class FigureSingleCellData:
                 n_bins=20,
                 verbose=True,
                 layer="counts",
-                return_mi=True,
+                return_mi=False,
+                standardization_method='scale'
             )
 
             self.save()
@@ -829,6 +862,7 @@ class FigureSingleCellData:
                     wrap_time={_rapa_program: None, _cc_program: CC_LENGTH},
                     layer="X",
                     n_comps=_n_comps,
+                    nan_on_error=True
                 )
 
                 _expt.obs[f"{CC_TIME_COL}_denoised"] = _denoised.obs[
@@ -861,12 +895,14 @@ class FigureSingleCellData:
         ):
             _dists = _ad.AnnData(
                 self.all_data.layers["counts"],
-                dtype=float,
                 var=self.all_data.var
             )
 
-            _sc.pp.normalize_per_cell(_dists)
-            _sc.pp.log1p(_dists)
+            _dists = self._normalize(
+                _dists,
+                method='scale',
+                n_counts=NO_RP_DEPTH
+            )
 
             _dists._inplace_subset_var(self.all_data.var["leiden"] != "-1")
 
@@ -911,12 +947,14 @@ class FigureSingleCellData:
 
             _dists = _ad.AnnData(
                 self.all_data.layers["counts"],
-                dtype=float,
                 var=self.all_data.var
             )
 
-            _sc.pp.normalize_per_cell(_dists)
-            _sc.pp.log1p(_dists)
+            _dists = self._normalize(
+                _dists,
+                method='scale',
+                n_counts=NO_RP_DEPTH
+            )
 
             self.all_data.varp["cosine_distance"] = pairwise_distances(
                 _dists.X.T, metric="cosine", n_jobs=None
@@ -974,7 +1012,7 @@ class CommonNames:
             cls._load()
 
         if gene_symbol in cls._gene_names.index:
-            return cls._gene_names.loc[gene_symbol][0]
+            return cls._gene_names.loc[gene_symbol].iloc[0]
         else:
             return gene_symbol
 

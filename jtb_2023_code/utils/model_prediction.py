@@ -57,12 +57,6 @@ def predict_all(
     _count_scaler = biophysics_model._count_inverse_scaler.numpy()
     _velo_scaler = biophysics_model._velocity_inverse_scaler.numpy()
 
-    if velo_model._count_inverse_scaler is None:
-        velo_model.set_scaling(_count_scaler, _velo_scaler)
-
-    if biophysics_model._decay_model._count_inverse_scaler is None:
-        biophysics_model._decay_model.set_scaling(_count_scaler, _velo_scaler)
-
     if data_processed:
         model_data = data
         model_scaler = None
@@ -91,31 +85,30 @@ def predict_all(
         predict_times=predict_times,
     )
 
+    predicts.var['count_scale'] = _count_scaler
+    predicts.var['velocity_scale'] = _velo_scaler
+
     predicts.layers["count_predict_counts"] = predicts.X.copy()
 
     print("Predicting From Velocity Model")
 
+    _velo_predicts = predict_from_model(
+        velo_model,
+        model_data,
+        untreated_only=untreated_only,
+        n_predicts=n_predicts,
+    )
     predicts.layers["velocity_predict_counts"] = np.multiply(
-        predict_from_model(
-            velo_model,
-            model_data,
-            return_counts=True,
-            untreated_only=untreated_only,
-            n_predicts=n_predicts,
-        ),
+        _velo_predicts[1],
         _count_scaler[None, None, :],
     ).reshape(-1, g)
 
     predicts.layers["velocity_predict_velocity"] = np.multiply(
-        predict_from_model(
-            velo_model,
-            model_data,
-            return_counts=False,
-            untreated_only=untreated_only,
-            n_predicts=n_predicts,
-        ),
+        _velo_predicts[0],
         _velo_scaler[None, None, :],
     ).reshape(-1, g)
+
+    del _velo_predicts
 
     predict_biophysics(
         model_data,
@@ -140,21 +133,20 @@ def predict_biophysics(
     _count_scaler = biophysics_model._count_inverse_scaler.numpy()
     _velo_scaler = biophysics_model._velocity_inverse_scaler.numpy()
     g = model_data.shape[1]
-
-    _predict = np.multiply(
+   
+    _velo_predict = np.multiply(
         predict_from_model(
             biophysics_model,
             model_data,
-            return_counts=False,
             untreated_only=untreated_only,
             n_predicts=n_predicts,
-        ),
+        )[0],
         _velo_scaler[None, None, :],
     ).reshape(-1, g)
 
     if predicts is None:
         predicts = _initialize_adata(
-            _predict,
+            _velo_predict,
             model_data,
             untreated_only=untreated_only,
             n_predicts=n_predicts,
@@ -163,17 +155,14 @@ def predict_biophysics(
         predicts.layers["biophysical_predict_velocity"] = predicts.X.copy()
 
     else:
-        predicts.layers["biophysical_predict_velocity"] = _predict
+        predicts.layers["biophysical_predict_velocity"] = _velo_predict
 
-    del _predict
+    del _velo_predict
 
-    _sub_predicts, counts, decays = predict_from_model(
+    _sub_predicts, counts, decays, tfa = predict_from_model(
         biophysics_model,
         model_data,
         return_submodels=True,
-        return_counts=True,
-        return_decays=True,
-        return_velocities=True,
         untreated_only=untreated_only,
         n_predicts=n_predicts,
     )
@@ -193,6 +182,8 @@ def predict_biophysics(
     predicts.layers["biophysical_predict_decay_constant"] = np.divide(
         decays, _count_scaler[None, None, :]
     ).reshape(-1, g)
+
+    predicts.obsm["biophysical_predict_tfa"] = tfa.reshape(-1, tfa.shape[-1])
 
     return predicts
 
@@ -363,7 +354,10 @@ def predict_from_model(
         kwargs["n_time_steps"] = n_predicts
 
     predicts_training = _to_numpy(
-        fit_model(data[..., 0] if return_data_stacked else data, **kwargs),
+        fit_model(
+            data[..., 0] if return_data_stacked else data,
+            **kwargs
+        ),
         add_dim=return_data_stacked,
     )
 
@@ -439,6 +433,9 @@ def _to_dataloader(
 def _to_numpy(x, add_dim=False):
     if isinstance(x, (tuple, list)):
         return tuple(_to_numpy(y) for y in x)
+
+    if x is None:
+        return None
 
     if x.requires_grad:
         x = x.detach()

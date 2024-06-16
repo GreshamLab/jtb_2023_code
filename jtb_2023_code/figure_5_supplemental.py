@@ -253,7 +253,7 @@ def figure_5_supplement_2_plot(data, save=True):
             r2 = corr_mat[i + j, i]
             axd[j + i, i].axline(
                 (0, 0),
-                slope=model.coef_,
+                slope=model.coef_.ravel()[0],
                 color="red",
                 linestyle="--",
                 linewidth=1
@@ -506,7 +506,7 @@ def figure_5_supplement_3_plot(
         )
 
         axd[1, i].axvline(0, 0, 1, linestyle="--", linewidth=1.0, c="black")
-        axd[1, i].set_ylim(0, 60)
+        axd[1, i].set_ylim(0, 80)
         axd[1, i].set_xticks([0, 50], [0, 50])
         axd[1, i].set_title(common_name(g), style="italic", size=8)
         axd[1, i].tick_params(axis="both", which="major", labelsize=8)

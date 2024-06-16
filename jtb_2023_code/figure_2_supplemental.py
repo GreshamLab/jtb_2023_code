@@ -190,6 +190,8 @@ def figure_2_supplement_14_plot(save=True):
 def figure_2_supplement_2_plot(data, save=True):
     # BUILD PLOT #
 
+    rapa_program = int(data.all_data.uns["programs"]["rapa_program"])
+
     fig, axd = plt.subplots(
         5, 4,
         figsize=(6, 8),
@@ -246,7 +248,7 @@ def figure_2_supplement_2_plot(data, save=True):
                 axd[i, 2*p + 1].xaxis.labelpad = -1
 
                 axd[i, 2*p].set_title(
-                    f"{'Rapamycin' if p == 0 else 'Cell Cycle'} ({expt[1]}"
+                    f"{'Rapamycin' if p == rapa_program else 'Cell Cycle'} ({expt[1]}"
                     f"{'Δ' if expt[1] == 'fpr1' else ''}, Rep. {expt[0]})",
                     x=1.35,
                     size=8
@@ -419,6 +421,14 @@ def figure_2_supplement_5_12_plot(data, save=True):
             aspect="equal"
         )
         axd_neither['cc_cbar'].axis('off')
+
+        if data.expt_data[j].obsm[f'program_{cc_program}_pca'].shape[1] == 2:
+            axd_cc['pca2'].axis('off')
+            del axd_cc['pca2']
+
+        if data.expt_data[j].obsm[f'program_{rapa_program}_pca'].shape[1] == 2:
+            axd_rapa['pca2'].axis('off')
+            del axd_rapa['pca2']
 
         program_time_summary(
             data.expt_data[j],

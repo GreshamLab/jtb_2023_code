@@ -1,4 +1,5 @@
 import numpy as np
+import anndata as ad
 
 from .utils.figure_common import (
     cluster_on_rows,
@@ -17,7 +18,7 @@ from .figure_constants import (
     FIGURE_1_FILE_NAME
 )
 from .utils.figure_data import load_rapa_bulk_data, rapa_bulk_times
-from .utils.Figure_deseq import DESeq2
+from .utils.Figure_deseq import run_deseq
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -26,32 +27,33 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 def plot_figure_1(sc_data, save=True):
     # LOAD AND PROCESS BULK RAPAMYCIN DATA FOR HEATMAP PANEL #
     rapa_bulk, rapa_bulk_meta = load_rapa_bulk_data()
+    rapa_bulk = ad.AnnData(
+        rapa_bulk,
+        obs=rapa_bulk_meta
+    )
 
     print("Running DESeq2")
-    de_obj = DESeq2(
-        rapa_bulk.reset_index(drop=True),
-        rapa_bulk_meta.reset_index(drop=True),
-        "~Time",
-        threads=4,
-    ).run(fitType="local", quiet=True)
-
-    print("Processing Results")
-    res = de_obj.multiresults(
-        lambda y: ("Time", y, "0.0"),
-        rapa_bulk_times(),
-        "Time",
-        lfcThreshold=FIGURE_1A_LFC_THRESHOLD,
+    res = run_deseq(
+        rapa_bulk,
+        'Time',
+        "0.0",
+        quiet=True,
+        lfc_null=FIGURE_1A_LFC_THRESHOLD
     )
+
     plot_genes = res.loc[
         res["padj"] < FIGURE_1A_PADJ_THRESHOLD,
         :
     ].index.unique()
-    plot_genes = (
-        res.loc[res.index.isin(plot_genes), :]
-        .pivot(columns="Time", values="log2FoldChange")
-        .reindex(rapa_bulk_times(include_0=True), axis=1)
-        .fillna(0)
-    )
+
+    plot_genes = res.loc[res.index.isin(plot_genes), :]
+    plot_genes = plot_genes.pivot(
+        columns="Time",
+        values="log2FoldChange"
+    ).reindex(
+        rapa_bulk_times(include_0=True),
+        axis=1
+    ).fillna(0)
 
     print("Clustering Results")
     plot_y_order = cluster_on_rows(plot_genes)

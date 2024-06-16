@@ -1,5 +1,10 @@
 import os as _os
 import argparse as _argparse
+import sys
+
+
+if "/share/apps/python/3.8.6/intel/lib/python3.8" in sys.path and sys.path[1] != '/home/cj59/.local/lib/python3.8/site-packages':
+    sys.path.insert(1, '/home/cj59/.local/lib/python3.8/site-packages')
 
 
 class _FilePathAdjustableRoot:

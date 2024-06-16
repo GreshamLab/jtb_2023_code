@@ -1,8 +1,6 @@
 import scanpy as _sc
 import numpy as _np
-import dewakss.denoise as _dd
-from inferelator_velocity.utils.graph import local_optimal_knn
-from joblib import parallel_backend as _parallel_backend
+from inferelator_velocity import global_graph, denoise
 
 from ..figure_constants import (
     N_PCS,

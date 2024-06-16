@@ -65,7 +65,7 @@ def plot_figure_2(data, save=True):
                 _bottom_h / 3
             ]
         ),
-        "legend_rapa": fig.add_axes([0.89, 0.1, 0.1, 0.4]),
+        "legend_rapa": fig.add_axes([0.9, 0.1, 0.1, 0.4]),
         "legend_cc": fig.add_axes([0.91, 0.55, 0.1, 0.4]),
     }
 
