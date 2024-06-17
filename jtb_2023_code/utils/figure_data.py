@@ -266,16 +266,21 @@ class FigureSingleCellData:
                 ].copy()
 
     @staticmethod
-    def _normalize(adata, n_counts=None, method='log'):
-        adata.layers["counts"] = adata.X.copy()
+    def _normalize(adata, n_counts=NO_RP_DEPTH, method='log'):
+
+        if 'counts' not in adata.layers.keys():
+            adata.layers["counts"] = adata.X.copy()
 
         standardize_data(
             adata,
             method=method,
             target_sum=n_counts,
-            subset_genes_for_depth=~(adata.var['RP'] | adata.var['RiBi'])
+            subset_genes_for_depth=~(
+                adata.var['RP'] |
+                adata.var['RiBi']
+            )
         )
-               
+
         if (method == 'scale') or (method == 'log_scale'):
             adata.var['scale_factor'] = adata.var['X_scale_factor']
 
@@ -324,17 +329,26 @@ class FigureSingleCellData:
                 pca_pt = _pd.DataFrame(
                     _np.nan,
                     index=self.all_data.obs_names,
-                    columns=_pd.MultiIndex.from_tuples([("pca", i == 1, "pca")]),
+                    columns=_pd.MultiIndex.from_tuples(
+                        [("pca", i == 1, "pca")]
+                    ),
                     dtype=float,
                 )
 
                 for k in self.expts:
 
-                    if (i == 1) and 'denoised_pca' not in self.expt_data[k].obsm.keys():
-                        self.expt_data[k].obsm['denoised_pca'] = self.denoised_data(*k).obsm['X_pca'][:, 0:5]
+                    _ref = self.expt_data[k]
+
+                    if (
+                        (i == 1) and
+                        'denoised_pca' not in _ref.obsm.keys()
+                    ):
+                        _ref.obsm['denoised_pca'] = self.denoised_data(
+                            *k
+                        ).obsm['X_pca'][:, 0:5]
 
                     pca_pt.loc[self._all_data_expt_index(*k), :] = get_pca_pt(
-                        self.expt_data[k],
+                        _ref,
                         pca_key="X_pca" if i == 0 else "denoised_pca",
                     ).reshape(-1, 1)
 
@@ -649,7 +663,7 @@ class FigureSingleCellData:
                     "noise2self_distance_graph"
                 ].copy()
             )
-            
+
             adata = self._normalize(
                 adata,
                 method='depth',
@@ -728,14 +742,20 @@ class FigureSingleCellData:
                 standardization_method='scale',
                 standardization_kwargs=dict(
                     target_sum=NO_RP_DEPTH,
-                    subset_genes_for_depth=~(self.all_data.var['RP'] | self.all_data.var['RiBi'])
+                    subset_genes_for_depth=~(
+                        self.all_data.var['RP'] |
+                        self.all_data.var['RiBi']
+                    )
                 ),
                 filter_to_hvg=True
             )
 
-            if _np.sum(self.all_data.var["programs"] == "0") > _np.sum(
-                self.all_data.var["programs"] == "1"
-            ):
+            _rp_program = self.all_data.var.loc[
+                self.all_data.var['RP'],
+                "programs"
+            ].value_counts().index[0]
+
+            if _rp_program == '0':
                 _rapa_program, _cc_program = "0", "1"
             else:
                 _rapa_program, _cc_program = "1", "0"
@@ -747,9 +767,12 @@ class FigureSingleCellData:
 
         self.process_graphs()
         self.process_times(recalculate=recalculate)
-            
+
     def process_graphs(self, recalculate=False):
-        if recalculate or "noise2self_distance_graph" not in self.expt_data[(1, "WT")].obsp:
+        if (
+            recalculate or
+            "noise2self_distance_graph" not in self.expt_data[(1, "WT")].obsp
+        ):
             self.apply_inplace_to_expts(
                 _ifv.global_graph,
                 neighbors=N_NEIGHBORS,
@@ -761,7 +784,7 @@ class FigureSingleCellData:
 
             self.save()
             self.process_times(recalculate=True)
-            
+
     def process_times(self, recalculate=False):
         _rapa_program = self.all_data.uns["programs"]["rapa_program"]
         _cc_program = self.all_data.uns["programs"]["cell_cycle_program"]
