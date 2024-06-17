@@ -16,7 +16,7 @@ from jtb_2023_code.utils.figure_common import (
     to_pool_colors,
     velocity_axes
 )
-from jtb_2023_code.utils.figure_data import common_name
+from jtb_2023_code.utils.figure_data import common_name, FigureSingleCellData
 from jtb_2023_code.figure_constants import (
     SUPIRFACTOR_COUNT_MODEL,
     SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL,
@@ -62,7 +62,9 @@ def predict_all(
         model_scaler = None
     else:
         model_data, model_scaler = process_data_for_model(
-            data, count_model.prior_network_labels[0]
+            data,
+            count_model.prior_network_labels[0],
+            scale_factor=_count_scaler
         )
 
     g = model_data.shape[1]
@@ -233,13 +235,13 @@ def _add_predict_times(
     return predicts
 
 
-def process_data_for_model(data, genes=None, wt_only=True, scale=True):
+def process_data_for_model(data, genes=None, wt_only=True, scale=True, scale_factor=None):
     if wt_only:
         _idx = data.obs["Gene"] == "WT"
     else:
         _idx = np.ones(data.shape[0], dtype=bool)
 
-    model_data = ad.AnnData(data.layers["counts"][_idx, :].astype(np.float32))
+    model_data = ad.AnnData(data.layers["counts"][_idx, :])
     model_data.obs = data.obs.loc[_idx, :].copy()
 
     if "program_1_time" in model_data.obs.columns:
@@ -247,18 +249,22 @@ def process_data_for_model(data, genes=None, wt_only=True, scale=True):
 
     model_data.var = data.var.copy()
 
+    model_data = FigureSingleCellData._normalize(
+        model_data,
+        method='depth',
+        n_counts=2000
+    )
+    
     if genes is not None and (
         (len(genes) != model_data.shape[1]) or not
         all(model_data.var_names == genes)
     ):
         model_data = model_data[:, genes].copy()
 
-    sc.pp.normalize_per_cell(model_data, counts_per_cell_after=3099)
-
-    return _process_for_model(model_data, scale=scale)
+    return _process_for_model(model_data, scale=scale, scale_factor=scale_factor)
 
 
-def process_velocity_for_model(data_obj, genes=None, scale=True):
+def process_velocity_for_model(data_obj, genes=None, scale=True, scale_factor=None):
     _velo = []
     _obs = []
 
@@ -272,27 +278,35 @@ def process_velocity_for_model(data_obj, genes=None, scale=True):
         del dd
         gc.collect()
 
-    model_data = ad.AnnData(np.vstack(_velo))
+    model_data = ad.AnnData(
+        np.vstack(_velo),
+        var=data_obj.all_data.var,
+        obs=pd.concat(_obs).reset_index(drop=True)
+    )
 
     del _velo
     gc.collect()
 
-    model_data.obs = pd.concat(_obs).reset_index(drop=True)
-    model_data.var_names = data_obj.all_data.var_names.copy()
-
     if genes is not None:
         model_data = model_data[:, genes].copy()
 
-    return _process_for_model(model_data, scale=scale)
+    return _process_for_model(model_data, scale=scale, scale_factor=scale_factor)
 
 
-def _process_for_model(model_data, scale=True):
+def _process_for_model(model_data, scale=True, scale_factor=None):
     model_data.obs["Test"] = _get_test_idx(model_data.shape[0])
 
     if scale:
         data_scaler = TruncRobustScaler(with_centering=False)
-        model_data.layers["scaled"] = data_scaler.fit_transform(model_data.X)
+
+        if scale_factor is None:
+            model_data.layers["scaled"] = data_scaler.fit_transform(model_data.X)
+        else:
+            data_scaler.scale_ = scale_factor
+            model_data.layers["scaled"] = data_scaler.transform(model_data.X)
+            
         model_data.var["scale"] = data_scaler.scale_
+
     else:
         data_scaler = None
 

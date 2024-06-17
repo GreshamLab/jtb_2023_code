@@ -10,6 +10,7 @@ from scipy.cluster.hierarchy import (
 )
 
 from scipy.spatial.distance import pdist
+from scself import standardize_data
 
 from jtb_2023_code.figure_constants import (
     CC_COLS,
@@ -51,14 +52,18 @@ supp_1_2_panel_labels = {"hm": "A", "cc": "B", "pr": "C"}
 
 
 def _mean_by_pool(adata, lfc_threshold=None):
-    _counts = adata.layers["counts"]
-    _umi = _counts.sum(axis=1).A1 / 3099
-    _counts /= _umi[:, None]
+    _counts = ad.AnnData(adata.layers["counts"].copy(), var=adata.var)
+    standardize_data(
+        _counts,
+        method='depth',
+        target_sum=2000,
+        subset_genes_for_depth=~(_counts.var['RP'] | _counts.var['RiBi'])
+    )
 
     _mean_expression = pd.DataFrame(
         np.vstack(
             [
-                _counts[adata.obs["Pool"] == i, :].mean(axis=0).A1
+                _counts.X[adata.obs["Pool"] == i, :].mean(axis=0).A1
                 for i in range(1, 9)
             ]
         ),
@@ -93,11 +98,24 @@ def _get_cc_bar_data(adata):
     )
 
 
-def _get_prop_bar_data(adata, counts=True):
+def _get_prop_bar_data(adata, counts=True, normalize=False):
+
     if counts:
+        if normalize:
+            _data = ad.AnnData(adata.layers["counts"].copy(), var=adata.var)
+            standardize_data(
+                _data,
+                method='depth',
+                target_sum=2000,
+                subset_genes_for_depth=~(_data.var['RP'] | _data.var['RiBi'])
+            )
+            _data = _data.X
+        else:
+            _data = adata.layers['counts']
+
         _counts = pd.DataFrame(
             {
-                c: adata.layers["counts"][:, adata.var[c]].sum(axis=1).A1
+                c: _data[:, adata.var[c]].sum(axis=1).A1
                 for c in GENE_CAT_COLS
             }
         )
@@ -415,7 +433,7 @@ def figure_1_supplement_1_plot(data, save=True):
 def figure_1_supplement_2_plot(data, save=True):
     fig_refs = {}
 
-    fig = plt.figure(figsize=(5, 7), dpi=SUPPLEMENTAL_FIGURE_DPI)
+    fig = plt.figure(figsize=(5, 8), dpi=SUPPLEMENTAL_FIGURE_DPI)
 
     def cluster_on_rows(dataframe, **kwargs):
         return dataframe.index[
@@ -430,28 +448,32 @@ def figure_1_supplement_2_plot(data, save=True):
 
     _l = 0.17
     _w = 0.16
-    _h = 0.14
+    _h = 0.12
 
     axd = {
-        "expr_1": fig.add_axes([_l, 0.76, _w, _h]),
-        "expr_2": fig.add_axes([_l + _w, 0.76, _w, _h]),
-        "expr_3": fig.add_axes([_l + 2 * _w, 0.76, _w, _h]),
-        "expr_4": fig.add_axes([_l + 3 * _w, 0.76, _w, _h]),
-        "expr_cbar": fig.add_axes([_l + 4 * _w + 0.01, 0.76, 0.015, _h]),
-        "cc_1": fig.add_axes([_l, 0.54, _w, _h]),
-        "cc_2": fig.add_axes([_l + _w, 0.54, _w, _h]),
-        "cc_3": fig.add_axes([_l + 2 * _w, 0.54, _w, _h]),
-        "cc_4": fig.add_axes([_l + 3 * _w, 0.54, _w, _h]),
-        "cc_legend": fig.add_axes([_l + 4 * _w, 0.54, 0.13, _h]),
-        "cat_1": fig.add_axes([_l, 0.32, _w, _h]),
-        "cat_2": fig.add_axes([_l + _w, 0.32, _w, _h]),
-        "cat_3": fig.add_axes([_l + 2 * _w, 0.32, _w, _h]),
-        "cat_4": fig.add_axes([_l + 3 * _w, 0.32, _w, _h]),
-        "cat_legend": fig.add_axes([_l + 4 * _w, 0.32, 0.13, _h]),
-        "cat_prop_1": fig.add_axes([_l, 0.1, _w, _h]),
-        "cat_prop_2": fig.add_axes([_l + _w, 0.1, _w, _h]),
-        "cat_prop_3": fig.add_axes([_l + 2 * _w, 0.1, _w, _h]),
-        "cat_prop_4": fig.add_axes([_l + 3 * _w, 0.1, _w, _h])
+        "expr_1": fig.add_axes([_l, 0.8, _w, _h]),
+        "expr_2": fig.add_axes([_l + _w, 0.8, _w, _h]),
+        "expr_3": fig.add_axes([_l + 2 * _w, 0.8, _w, _h]),
+        "expr_4": fig.add_axes([_l + 3 * _w, 0.8, _w, _h]),
+        "expr_cbar": fig.add_axes([_l + 4 * _w + 0.01, 0.8, 0.015, _h]),
+        "cc_1": fig.add_axes([_l, 0.6, _w, _h]),
+        "cc_2": fig.add_axes([_l + _w, 0.6, _w, _h]),
+        "cc_3": fig.add_axes([_l + 2 * _w, 0.6, _w, _h]),
+        "cc_4": fig.add_axes([_l + 3 * _w, 0.6, _w, _h]),
+        "cc_legend": fig.add_axes([_l + 4 * _w, 0.6, 0.13, _h]),
+        "cat_1": fig.add_axes([_l, 0.425, _w, _h]),
+        "cat_2": fig.add_axes([_l + _w, 0.425, _w, _h]),
+        "cat_3": fig.add_axes([_l + 2 * _w, 0.425, _w, _h]),
+        "cat_4": fig.add_axes([_l + 3 * _w, 0.425, _w, _h]),
+        "cat_norm_1": fig.add_axes([_l, 0.25, _w, _h]),
+        "cat_norm_2": fig.add_axes([_l + _w, 0.25, _w, _h]),
+        "cat_norm_3": fig.add_axes([_l + 2 * _w, 0.25, _w, _h]),
+        "cat_norm_4": fig.add_axes([_l + 3 * _w, 0.25, _w, _h]),
+        "cat_legend": fig.add_axes([_l + 4 * _w, 0.25, 0.13, _h]),
+        "cat_prop_1": fig.add_axes([_l, 0.075, _w, _h]),
+        "cat_prop_2": fig.add_axes([_l + _w, 0.075, _w, _h]),
+        "cat_prop_3": fig.add_axes([_l + 2 * _w, 0.075, _w, _h]),
+        "cat_prop_4": fig.add_axes([_l + 3 * _w, 0.075, _w, _h])
     }
 
     axd["expr_1"].set_title(
@@ -463,22 +485,28 @@ def figure_1_supplement_2_plot(data, save=True):
     axd["cat_1"].set_title(
         "C", loc="left", weight="bold", size=10, x=-0.1
     )
-    axd["cat_prop_1"].set_title(
+    axd["cat_norm_1"].set_title(
         "D", loc="left", weight="bold", size=10, x=-0.1
+    )
+    axd["cat_prop_1"].set_title(
+        "E", loc="left", weight="bold", size=10, x=-0.1
     )
 
     axd["cc_1"].set_ylabel("% Cells in Phase", size=8)
     axd["cc_1"].tick_params(axis="both", which="major", labelsize=8)
 
-    axd["cat_1"].set_ylabel("Mean Counts (UMI)", size=8)
+    axd["cat_1"].set_ylabel("Counts (UMI)", size=8)
     axd["cat_1"].tick_params(axis="both", which="major", labelsize=8)
 
+    axd["cat_norm_1"].set_ylabel("Standardized Counts", size=8)
+    axd["cat_norm_1"].tick_params(axis="both", which="major", labelsize=8)
+    
     axd["cat_prop_1"].set_ylabel("% Gene Expression", size=8)
     axd["cat_prop_1"].tick_params(axis="both", which="major", labelsize=8)
 
     axd["expr_2"].set_xlabel("Time (Interval)", size=8, x=1)
-    axd["cc_2"].set_xlabel("Time (Interval)", size=8, x=1)
-    axd["cat_2"].set_xlabel("Time (Interval)", size=8, x=1)
+    #axd["cc_2"].set_xlabel("Time (Interval)", size=8, x=1)
+    #axd["cat_2"].set_xlabel("Time (Interval)", size=8, x=1)
     axd["cat_prop_2"].set_xlabel("Time (Interval)", size=8, x=1)
 
     plot_y_order = cluster_on_rows(
@@ -541,6 +569,19 @@ def figure_1_supplement_2_plot(data, save=True):
         )
         axd[f"cat_{i}"].set_ylim(0, 6000)
 
+        fig_refs[f"cat_norm_{i}"] = plot_stacked_barplot(
+            _get_prop_bar_data(data.expt_data[k], normalize=True),
+            axd[f"cat_norm_{i}"],
+            GENE_CAT_COLS[::-1],
+            palette=gene_category_palette()[::-1],
+        )
+        axd[f"cat_norm_{i}"].set_xticks(
+            list(range(0, 8)),
+            list(range(1, 9)),
+            size=8
+        )
+        axd[f"cat_norm_{i}"].set_ylim(0, 6000)
+
         fig_refs[f"cat_prop_{i}"] = plot_stacked_barplot(
             _get_prop_bar_data(data.expt_data[k], counts=False),
             axd[f"cat_prop_{i}"],
@@ -555,6 +596,7 @@ def figure_1_supplement_2_plot(data, save=True):
 
         if i > 1:
             axd[f"cc_{i}"].set_yticks([], [])
+            axd[f"cat_norm_{i}"].set_yticks([], [])
             axd[f"cat_{i}"].set_yticks([], [])
             axd[f"cat_prop_{i}"].set_yticks([], [])
 

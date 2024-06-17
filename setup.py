@@ -21,11 +21,9 @@ setup(
       'joblib',
       'anndata',
       'matplotlib',
-      'DEWAKSS',
-      'rpy2',
       'supirfactor-dynamical',
       'inferelator-velocity',
-
+      'pydeseq'
     ],
     zip_safe=True,
     classifiers=[

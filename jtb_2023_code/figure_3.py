@@ -134,7 +134,7 @@ def figure_3_plot(model_data, predicts, save=True):
     )
     axd["down_predicts"].set_xlabel("Time (min)", size=8)
 
-    axd["down_predicts"].set_ylim(0, 22)
+    axd["down_predicts"].set_ylim(0, 30)
 
     axd["legend"].imshow(
         plt.imread(FIG_RAPA_LEGEND_VERTICAL_FILE_NAME),

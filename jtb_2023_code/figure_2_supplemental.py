@@ -10,6 +10,7 @@ import statsmodels.api as sm
 
 from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
+from scself import standardize_data
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -748,11 +749,15 @@ def _generate_heatmap_data(
 ):
     raw_data = ad.AnnData(
         data_obj.all_data.layers["counts"],
-        dtype=float,
         var=data_obj.all_data.var
     )
 
-    sc.pp.normalize_per_cell(raw_data)
+    standardize_data(
+        raw_data,
+        method='depth',
+        target_sum=2000,
+        subset_genes_for_depth=~(raw_data.var['RP'] | raw_data.var['RiBi'])
+    )
 
     _program_idx = data_obj.all_data.var["programs"] == program
 

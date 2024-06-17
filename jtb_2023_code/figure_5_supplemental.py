@@ -3,6 +3,7 @@ import matplotlib.patches as patches
 
 import numpy as np
 import anndata as ad
+import scipy.sparse as sps
 
 from jtb_2023_code.utils.figure_common import (
     to_pool_colors,
@@ -615,10 +616,10 @@ def _get_fig5_data(data_obj, genes=None):
             ][_var_idx, :]
 
         del _vdata
-
-        fig3_data.layers["denoised"][_idx, :] = data_obj.denoised_data(*k).X[
+        _dd = data_obj.denoised_data(*k).X[
             :, _var_idx
         ]
+        fig3_data.layers["denoised"][_idx, :] = _dd.A if sps.issparse(_dd) else _dd
 
     fig3_data = fig3_data[fig3_data.obs["Gene"] == "WT", :].copy()
 

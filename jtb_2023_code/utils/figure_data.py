@@ -331,10 +331,7 @@ class FigureSingleCellData:
                 for k in self.expts:
 
                     if (i == 1) and 'denoised_pca' not in self.expt_data[k].obsm.keys():
-                        _dnd = self.denoised_data(*k)
-                        _sc.pp.pca(_dnd, n_comps=5)
-                        self.expt_data[k].obsm['denoised_pca'] = _dnd.obsm['X_pca']
-                        del _dnd
+                        self.expt_data[k].obsm['denoised_pca'] = self.denoised_data(*k).obsm['X_pca'][:, 0:5]
 
                     pca_pt.loc[self._all_data_expt_index(*k), :] = get_pca_pt(
                         self.expt_data[k],
@@ -663,6 +660,8 @@ class FigureSingleCellData:
                 adata,
                 output_layer='X'
             )
+
+            _sc.pp.pca(adata, n_comps=100)
 
             adata.write(_fn)
 

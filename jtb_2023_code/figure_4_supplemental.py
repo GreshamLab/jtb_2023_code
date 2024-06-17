@@ -75,7 +75,6 @@ def figure_4_supplement_1_plot(data, save=True):
 
     for i in range(1, 3):
         expt_dd = data.denoised_data(i, "WT")
-        expt_dd.obsm["X_pca"] = expt_dd.obsm["denoised_pca"]
         _n_pcs = 100
 
         rgen = np.random.default_rng(441)

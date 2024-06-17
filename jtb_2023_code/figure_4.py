@@ -91,7 +91,7 @@ def plot_figure_4(model_data, velo_data, predicts, save=True):
         "B", loc="left", weight="bold", size=8, x=-0.3
     )
     axd["gene_1_expr"].set_ylim(0, 8)
-    axd["gene_2_expr"].set_ylim(0, 22)
+    axd["gene_2_expr"].set_ylim(0, 30)
     axd["pca_counts"].set_title("D", loc="left", weight="bold", size=8, x=-0.2)
     axd["results"].set_title("A", loc="left", weight="bold", size=8, x=-0.5)
 
