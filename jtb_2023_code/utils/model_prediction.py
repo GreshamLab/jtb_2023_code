@@ -36,20 +36,23 @@ def predict_all(
     data_processed=False,
     untreated_only=True,
     n_predicts=60,
-    predict_times=None
+    predict_times=None,
+    count_model_file=SUPIRFACTOR_COUNT_MODEL,
+    velocity_model_file=SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL,
+    biophysical_model_file=SUPIRFACTOR_BIOPHYSICAL_MODEL
 ):
     count_model = (
-        read(SUPIRFACTOR_COUNT_MODEL)
+        read(count_model_file)
         .eval()
         .set_time_parameters(n_additional_predictions=0, loss_offset=0)
     )
     velo_model = (
-        read(SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL)
+        read(velocity_model_file)
         .eval()
         .set_time_parameters(n_additional_predictions=0, loss_offset=0)
     )
     biophysics_model = (
-        read(SUPIRFACTOR_BIOPHYSICAL_MODEL)
+        read(biophysical_model_file)
         .eval()
         .set_time_parameters(n_additional_predictions=0, loss_offset=0)
     )
