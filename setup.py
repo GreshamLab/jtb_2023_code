@@ -23,7 +23,7 @@ setup(
       'matplotlib',
       'supirfactor-dynamical',
       'inferelator-velocity',
-      'pydeseq'
+      'pydeseq2'
     ],
     zip_safe=True,
     classifiers=[
