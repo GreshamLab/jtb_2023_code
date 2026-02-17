@@ -34,6 +34,10 @@ from jtb_2023_code.figure_constants import (
     SUPPLEMENTAL_FIGURE_DPI
 )
 
+from jtb_2023_code.plotting import (
+    plot_pca
+)
+
 from inferelator_velocity.plotting.program_times import (
     program_time_summary
 )
@@ -73,27 +77,21 @@ def figure_2_supplement_1_plot(data, save=True):
 
     for i in range(1, 3):
         for j, k in itertools.combinations(range(1, 5), 2):
-            comp_str = str(j) + "," + str(k)
             for ak, c, palette in [
                 ("_cc", "CC", cc_palette()),
                 ("_t", "Pool", pool_palette()),
             ]:
                 ax_key = "pc" + str(j) + str(k) + "_" + str(i) + ak
-                fig_refs[ax_key] = sc.pl.pca(
+
+                fig_refs[ax_key] = plot_pca(
+                    axd[ax_key],
                     data.expt_data[(i, "WT")],
-                    ax=axd[ax_key],
-                    components=comp_str,
-                    color=c,
-                    palette=palette,
-                    title=None,
-                    show=False,
+                    cmap=palette,
+                    c=data.expt_data[(i, "WT")].obs[c].values,
                     alpha=0.25,
-                    size=2,
-                    legend_loc="none",
-                    annotate_var_explained=True,
+                    size=2
                 )
 
-                axd[ax_key].set_title("")
                 if ak == "_t":
                     axd[ax_key].set_ylabel("")
 
