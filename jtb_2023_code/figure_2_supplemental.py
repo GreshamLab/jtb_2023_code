@@ -12,6 +12,7 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from scipy.spatial.distance import squareform
 from scself import standardize_data
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
@@ -86,7 +87,7 @@ def figure_2_supplement_1_plot(data, save=True):
                 fig_refs[ax_key] = plot_pca(
                     axd[ax_key],
                     data.expt_data[(i, "WT")],
-                    cmap=palette,
+                    cmap=matplotlib.colors.ListedColormap(palette),
                     c=data.expt_data[(i, "WT")].obs[c].astype('category').cat.codes,
                     alpha=0.25,
                     size=2
