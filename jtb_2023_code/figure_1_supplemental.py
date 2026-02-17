@@ -115,7 +115,7 @@ def _get_prop_bar_data(adata, counts=True, normalize=False):
 
         _counts = pd.DataFrame(
             {
-                c: _data[:, adata.var[c]].sum(axis=1).A1
+                c: _data[:, adata.var[c].values].sum(axis=1).A1
                 for c in GENE_CAT_COLS
             }
         )
