@@ -87,7 +87,7 @@ def figure_2_supplement_1_plot(data, save=True):
                     axd[ax_key],
                     data.expt_data[(i, "WT")],
                     cmap=palette,
-                    c=data.expt_data[(i, "WT")].obs[c].values,
+                    c=data.expt_data[(i, "WT")].obs[c].astype('category').cat.codes,
                     alpha=0.25,
                     size=2
                 )
