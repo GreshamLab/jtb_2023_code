@@ -63,7 +63,7 @@ def _mean_by_pool(adata, lfc_threshold=None):
     _mean_expression = pd.DataFrame(
         np.vstack(
             [
-                _counts.X[adata.obs["Pool"] == i, :].mean(axis=0).A1
+                _counts.X[(adata.obs["Pool"] == i).values, :].mean(axis=0).A1
                 for i in range(1, 9)
             ]
         ),

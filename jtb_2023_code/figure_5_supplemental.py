@@ -475,8 +475,9 @@ def figure_5_supplement_3_plot(
     axd[2, 0].set_title("C", loc="left", weight="bold", size=10, x=-0.6)
 
     for i, g in enumerate(["YKR039W", "YOR063W", "YDR224C", "YPR035W"]):
-        _dc = decay_predicts.X[:, decay_predicts.var_names == g].ravel()
-        _dc /= model_scaler.scale_[decay_predicts.var_names == g]
+        _dc_idx = decay_predicts.var_names == g
+        _dc = decay_predicts.X[:, _dc_idx].ravel()
+        _dc /= model_scaler.scale_[_dc_idx]
 
         axd[1, i].plot(
             np.arange(-10, 60) + 0.5,
@@ -496,8 +497,12 @@ def figure_5_supplement_3_plot(
             np.log(2)
             / aggregate_sliding_window_times(
                 data.all_data.layers["decay_constants"][
-                    data.all_data.obs["Gene"] == "WT", :
-                ][:, data.all_data.var_names == g],
+                    (data.all_data.obs["Gene"] == "WT").values,
+                    :
+                ][
+                    :,
+                    data.all_data.var_names == g
+                ],
                 model_data.obs["program_rapa_time"],
                 width=1,
                 centers=np.arange(-10, 60) + 0.5,
@@ -513,8 +518,8 @@ def figure_5_supplement_3_plot(
         axd[1, i].tick_params(axis="both", which="major", labelsize=8)
 
         _transcription_rate = np.subtract(
-            decay_velo_predicts[:, :, decay_predicts.var_names == g, 1],
-            decay_velo_predicts[:, :, decay_predicts.var_names == g, 2],
+            decay_velo_predicts[:, :, _dc_idx, 1],
+            decay_velo_predicts[:, :, _dc_idx, 2],
         )
 
         _tr_data = aggregate_sliding_window_times(

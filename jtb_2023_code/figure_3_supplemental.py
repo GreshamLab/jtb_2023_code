@@ -58,7 +58,7 @@ def figure_3_supplement_1_plot(save=True):
             _data_min = X.min(axis=0)
 
             try:
-                _data_min = _data_min.A.flatten()
+                _data_min = _data_min.toarray().flatten()
             except AttributeError:
                 pass
 

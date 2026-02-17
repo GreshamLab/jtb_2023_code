@@ -14,7 +14,7 @@ def run_deseq(
     lfc_null=np.log2(1.2),
     layer='X',
     size_factors='ratio',
-    quiet=False
+    quiet=True
 ):
 
     lref = data.X if layer == 'X' else data.layers[layer]

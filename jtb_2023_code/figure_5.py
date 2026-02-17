@@ -245,7 +245,7 @@ def plot_figure_5(model_data, velo_data, predicts, save=True):
         np.log(2)
         / aggregate_sliding_window_times(
             predicts.layers["biophysical_predict_decay_constant"][
-                :, model_data.var["RP"]
+                :, model_data.var["RP"].values
             ],
             predicts.obs["program_rapa_time"],
             width=1,
