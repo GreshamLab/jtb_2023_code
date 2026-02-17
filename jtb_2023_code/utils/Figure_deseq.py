@@ -20,7 +20,7 @@ def run_deseq(
     lref = data.X if layer == 'X' else data.layers[layer]
 
     deseq_data = pydeseq2.dds.DeseqDataSet(
-        counts=lref.A if sps.issparse(lref) else lref,
+        counts=lref.toarray() if sps.issparse(lref) else lref,
         metadata=data.obs[[obs_col]],
         design_factors=[obs_col],
         refit_cooks=True,

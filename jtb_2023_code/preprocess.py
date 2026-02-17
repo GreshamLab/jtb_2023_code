@@ -19,7 +19,7 @@ def preprocess():
     data.do_projections()
     data.apply_inplace_to_everything(calc_other_cc_groups)
 
-    data.process_programs(recalculate=True)
+    data.process_programs()
 
     for k in data.expts:
         data.decay_data(*k)

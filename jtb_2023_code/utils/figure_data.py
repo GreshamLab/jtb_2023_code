@@ -551,7 +551,7 @@ class FigureSingleCellData:
                 ("rapamycin", RAPA_TIME_COL, -10, 60),
             ]:
                 try:
-                    expr = _np.vstack([a.X.A for a in adata_list])
+                    expr = _np.vstack([a.X.toarray() for a in adata_list])
                 except AttributeError:
                     expr = _np.vstack([a.X for a in adata_list])
 

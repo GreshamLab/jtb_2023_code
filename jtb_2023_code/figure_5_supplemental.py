@@ -619,7 +619,7 @@ def _get_fig5_data(data_obj, genes=None):
         _dd = data_obj.denoised_data(*k).X[
             :, _var_idx
         ]
-        fig3_data.layers["denoised"][_idx, :] = _dd.A if sps.issparse(_dd) else _dd
+        fig3_data.layers["denoised"][_idx, :] = _dd.toarray() if sps.issparse(_dd) else _dd
 
     fig3_data = fig3_data[fig3_data.obs["Gene"] == "WT", :].copy()
 
