@@ -757,7 +757,7 @@ def _generate_heatmap_data(
         subset_genes_for_depth=~(raw_data.var['RP'] | raw_data.var['RiBi'])
     )
 
-    _program_idx = data_obj.all_data.var["programs"] == program
+    _program_idx = (data_obj.all_data.var["programs"] == program).values
 
     if count_threshold is not None:
         _gene_means = data_obj.all_data.X.mean(axis=0)
@@ -774,8 +774,12 @@ def _generate_heatmap_data(
     _gene_order_idx = dendrogram(
         linkage(
             squareform(
-                data_obj.all_data.varp["cosine_distance"][_program_idx, :][
-                    :, _program_idx
+                data_obj.all_data.varp["cosine_distance"][
+                    _program_idx,
+                    :
+                ][
+                    :,
+                    _program_idx
                 ],
                 checks=False,
             )
@@ -783,13 +787,18 @@ def _generate_heatmap_data(
         no_plot=True,
     )["leaves"]
 
-    _wt_idx = data_obj.all_data.obs["Gene"] == "WT"
+    _wt_idx = (data_obj.all_data.obs["Gene"] == "WT").values
     _rapa_time_key = f"program_{program}_time"
 
     _obs_order_idx = data_obj.all_data.obs.loc[
         _wt_idx,
         _rapa_time_key
     ].argsort()
+
+    try:
+        _obs_order_idx = _obs_order_idx.values
+    except AttributeError:
+        pass
 
     if obs_time_ticks is None:
         _obs_times = None
