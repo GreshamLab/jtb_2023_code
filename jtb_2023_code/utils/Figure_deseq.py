@@ -14,7 +14,8 @@ def run_deseq(
     lfc_null=np.log2(1.2),
     layer='X',
     size_factors='ratio',
-    quiet=True
+    quiet=True,
+    control_genes=None
 ):
 
     lref = data.X if layer == 'X' else data.layers[layer]
@@ -24,10 +25,12 @@ def run_deseq(
         metadata=data.obs[[obs_col]],
         design_factors=[obs_col],
         refit_cooks=True,
-        quiet=quiet
+        quiet=quiet,
+        control_genes=control_genes,
+        size_factors_fit_type=size_factors
     )
 
-    deseq_data.fit_size_factors(size_factors)
+    deseq_data.fit_size_factors()
     deseq_data.fit_genewise_dispersions()
     deseq_data.fit_dispersion_trend()
     deseq_data.fit_dispersion_prior()

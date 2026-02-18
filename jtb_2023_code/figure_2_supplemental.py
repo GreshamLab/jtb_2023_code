@@ -672,7 +672,10 @@ def figure_2_supplement_4_plot(data_obj, save=True):
     )
 
     fig_refs["rapa_heatmap"] = axd["rapa_heatmap"].pcolormesh(
-        raw_data, cmap="magma", vmin=0, vmax=np.floor(raw_data.max())
+        raw_data,
+        cmap="magma",
+        vmin=0,
+        vmax=np.floor(raw_data.max())
     )
 
     axd["rapa_heatmap"].set_xticks(tick_locations, labels=_xticks)
@@ -744,7 +747,10 @@ def figure_2_supplement_4_plot(data_obj, save=True):
 
 
 def _generate_heatmap_data(
-    data_obj, program, count_threshold=None, obs_time_ticks=None
+    data_obj,
+    program,
+    count_threshold=None,
+    obs_time_ticks=None
 ):
     raw_data = ad.AnnData(
         data_obj.all_data.layers["counts"],
