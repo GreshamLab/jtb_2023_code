@@ -27,10 +27,9 @@ def run_deseq(
         refit_cooks=True,
         quiet=quiet,
         control_genes=control_genes,
-        size_factors_fit_type=size_factors
     )
 
-    deseq_data.fit_size_factors()
+    deseq_data.fit_size_factors(size_factors)
     deseq_data.fit_genewise_dispersions()
     deseq_data.fit_dispersion_trend()
     deseq_data.fit_dispersion_prior()
@@ -47,7 +46,8 @@ def run_deseq(
             independent_filter=True,
             contrast=[obs_col.replace("_", "-"), comp, base_value],
             lfc_null=lfc_null,
-            alt_hypothesis='greaterAbs'
+            alt_hypothesis='greaterAbs',
+            quiet=True
         )
         result.run_wald_test()
         result._p_value_adjustment()

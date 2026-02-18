@@ -90,7 +90,8 @@ def figure_2_supplement_1_plot(data, save=True):
                     cmap=matplotlib.colors.ListedColormap(palette),
                     c=data.expt_data[(i, "WT")].obs[c].astype('category').cat.codes,
                     alpha=0.25,
-                    size=2
+                    s=2,
+                    pcs=(j - 1, k - 1)
                 )
 
                 if ak == "_t":
@@ -675,7 +676,8 @@ def figure_2_supplement_4_plot(data_obj, save=True):
         raw_data,
         cmap="magma",
         vmin=0,
-        vmax=np.floor(raw_data.max())
+        vmax=np.floor(raw_data.max()),
+        rasterized=True
     )
 
     axd["rapa_heatmap"].set_xticks(tick_locations, labels=_xticks)
@@ -716,7 +718,11 @@ def figure_2_supplement_4_plot(data_obj, save=True):
     )
 
     fig_refs["cc_heatmap"] = axd["cc_heatmap"].pcolormesh(
-        raw_data, cmap="magma", vmin=0, vmax=np.floor(raw_data.max())
+        raw_data,
+        cmap="magma",
+        vmin=0,
+        vmax=np.floor(raw_data.max()),
+        rasterized=True
     )
 
     axd["cc_heatmap"].set_xticks(tick_locations, labels=_xticks)
@@ -824,7 +830,7 @@ def _generate_heatmap_data(
     raw_data = raw_data.T
 
     try:
-        raw_data = raw_data.A
+        raw_data = raw_data.toarray()
     except AttributeError:
         pass
 
