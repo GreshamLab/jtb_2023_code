@@ -240,7 +240,7 @@ def _add_predict_times(
 
 def process_data_for_model(data, genes=None, wt_only=True, scale=True, scale_factor=None):
     if wt_only:
-        _idx = data.obs["Gene"] == "WT"
+        _idx = (data.obs["Gene"] == "WT").values
     else:
         _idx = np.ones(data.shape[0], dtype=bool)
 
@@ -487,7 +487,7 @@ def plot_gene(
         test_idx = np.ones(d.shape[0], dtype=bool)
 
     if time_positive_only:
-        test_idx &= d.obs["program_rapa_time"] > 0
+        test_idx &= (d.obs["program_rapa_time"] > 0).values
 
     _time = d.obs["program_rapa_time"].values[test_idx]
 

@@ -103,7 +103,7 @@ def _data_packager(data, out_file=None):
 
         _dnd = data.denoised_data(*k).X
         if sps.issparse(_dnd):
-            _dnd = _dnd.A
+            _dnd = _dnd.toarray()
 
         inf_data.layers["denoised"][_expt_idx, :] = _dnd
         del _dnd
