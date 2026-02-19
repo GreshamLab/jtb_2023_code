@@ -1158,7 +1158,7 @@ def sum_for_pseudobulk(adata, by_cols):
         _count_data = adata.layers["counts"][idx, :]
 
         try:
-            _count_data = _count_data.A
+            _count_data = _count_data.toarray()
         except AttributeError:
             pass
 

@@ -27,7 +27,7 @@ def calculate_velocities(
             lref = data.X if layer == "X" else data.layers[layer]
 
             try:
-                lref = lref.A
+                lref = lref.toarray()
             except AttributeError:
                 pass
 

@@ -24,7 +24,7 @@ def calc_decays(
     lref = adata.X if layer == "X" else adata.layers[layer]
 
     try:
-        lref = lref.A
+        lref = lref.toarray()
     except AttributeError:
         pass
 
@@ -70,7 +70,7 @@ def calc_decay_windows(
     lref = adata.X if layer == "X" else adata.layers[layer]
 
     try:
-        lref = lref.A
+        lref = lref.toarray()
     except AttributeError:
         pass
 

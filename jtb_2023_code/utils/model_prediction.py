@@ -22,11 +22,11 @@ from jtb_2023_code.figure_constants import (
     SUPIRFACTOR_VELOCITY_DYNAMICAL_MODEL,
     SUPIRFACTOR_BIOPHYSICAL_MODEL
 )
+from scself import TruncRobustScaler
 
 from supirfactor_dynamical import (
     read,
     TimeDataset,
-    TruncRobustScaler,
     predict_perturbation
 )
 
@@ -406,7 +406,7 @@ def _to_dataloader(
         _data = model_data.layers[layer][test_idx, :]
 
     try:
-        _data = _data.A
+        _data = _data.toarray()
     except AttributeError:
         pass
 
@@ -507,7 +507,7 @@ def plot_gene(
     rgen.shuffle(overplot_shuffle)
 
     try:
-        _gene_data = _gene_data.A
+        _gene_data = _gene_data.toarray()
     except AttributeError:
         pass
 

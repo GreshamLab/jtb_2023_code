@@ -48,7 +48,7 @@ class OldElifeData:
 
         elif os.path.exists(ELIFE_SINGLE_CELL_FILE_PROCESSED):
             print(f"Loading {ELIFE_SINGLE_CELL_FILE_PROCESSED}")
-            self.data = ad.read(ELIFE_SINGLE_CELL_FILE_PROCESSED)
+            self.data = ad.read_h5ad(ELIFE_SINGLE_CELL_FILE_PROCESSED)
 
         else:
             self._first_load(align_adata=align_adata)
@@ -56,7 +56,7 @@ class OldElifeData:
     def _first_load(self, align_adata=None):
         print(f"Loading and processing {ELIFE_SINGLE_CELL_FILE}")
 
-        df = ad.read(ELIFE_SINGLE_CELL_FILE)
+        df = ad.read_h5ad(ELIFE_SINGLE_CELL_FILE)
 
         obs_data = df.obs.copy()
         df = df.to_df()
@@ -98,7 +98,7 @@ class OldElifeData:
     def get_pseudobulk(self, genotype="WT", condition="YPD"):
         if self.pseudobulk is None:
             self.pseudobulk = pd.DataFrame(
-                self.data.layers["counts"].A,
+                self.data.layers["counts"].toarray(),
                 index=self.data.obs_names,
                 columns=self.data.var_names,
             )
@@ -166,7 +166,7 @@ def get_elife_model_predictions(
         biophysical_model,
         None
     )
-    ypd.X = ypd.X.A
+    ypd.X = ypd.X.toarray()
 
     rapa, _ = get_elife_data(
         elife,
@@ -239,7 +239,7 @@ def get_elife_model_predictions(
             size=_input.shape[0],
         )
         _output = torch.Tensor(
-            np.expand_dims(rapa.layers["scaled"][_output_idx, :].A, 1)
+            np.expand_dims(rapa.layers["scaled"][_output_idx, :].toarray(), 1)
         )
 
         return _input, _output

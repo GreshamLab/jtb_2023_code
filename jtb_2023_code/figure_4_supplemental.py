@@ -15,6 +15,7 @@ from jtb_2023_code.figure_constants import (
     SFIG3A_FILE_NAME
 )
 
+import matplotlib
 from matplotlib import collections
 from sklearn.linear_model import LinearRegression
 
@@ -25,6 +26,9 @@ from jtb_2023_code.utils.model_result_loader import (
     get_plot_idx,
 )
 
+from jtb_2023_code.plotting import (
+    plot_pca
+)
 
 def figure_4_supplement_1_plot(data, save=True):
     fig_refs = {}
@@ -111,42 +115,27 @@ def figure_4_supplement_1_plot(data, save=True):
         axd[f"exp_var_{i}"].tick_params(labelsize=8)
 
         for k in range(2, 4):
-            comp_str = str(1) + "," + str(k)
-            sc.pl.pca(
+            plot_pca(
+                axd[f"pc1{k}_{i}"],
                 data.expt_data[(i, "WT")],
-                ax=axd[f"pc1{k}_{i}"],
-                components=comp_str,
-                color="Pool",
-                palette=pool_palette(),
-                title=None,
-                show=False,
+                cmap=matplotlib.colors.ListedColormap(pool_palette()),
+                c=data.expt_data[(i, "WT")].obs["Pool"].astype('category').cat.codes,
                 alpha=0.25,
-                size=2,
-                legend_loc="none",
-                annotate_var_explained=True,
+                s=2,
+                pcs=(0, k - 1),
+                label_size=8
             )
 
-            axd[f"pc1{k}_{i}"].set_title(None)
-            axd[f"pc1{k}_{i}"].xaxis.label.set_size(8)
-            axd[f"pc1{k}_{i}"].yaxis.label.set_size(8)
-
-            sc.pl.pca(
+            plot_pca(
+                axd[f"denoised_pc1{k}_{i}"],
                 expt_dd,
-                ax=axd[f"denoised_pc1{k}_{i}"],
-                components=comp_str,
-                color="Pool",
-                palette=pool_palette(),
-                title=None,
-                show=False,
+                cmap=matplotlib.colors.ListedColormap(pool_palette()),
+                c=expt_dd.obs["Pool"].astype('category').cat.codes,
                 alpha=0.25,
-                size=2,
-                legend_loc="none",
-                annotate_var_explained=True,
+                s=2,
+                pcs=(0, k - 1),
+                label_size=8
             )
-
-            axd[f"denoised_pc1{k}_{i}"].set_title(None)
-            axd[f"denoised_pc1{k}_{i}"].xaxis.label.set_size(8)
-            axd[f"denoised_pc1{k}_{i}"].yaxis.label.set_size(8)
 
             if k == 2:
                 axd[f"pc1{k}_{i}"].set_title("Counts", size=8)
@@ -679,7 +668,7 @@ def _plot_velocity_calc(
     gene_data = expr_layer[:, gene_loc]
 
     try:
-        gene_data = gene_data.A
+        gene_data = gene_data.toarray()
     except AttributeError:
         pass
 

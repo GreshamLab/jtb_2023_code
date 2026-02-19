@@ -33,7 +33,7 @@ model_labels = {
 
 
 def figure_3_supplement_1_plot(save=True):
-    data = ad.read(INFERELATOR_DATA_FILE)
+    data = ad.read_h5ad(INFERELATOR_DATA_FILE)
     prior = pd.read_csv(INFERELATOR_PRIORS_FILE, sep="\t", index_col=0)
 
     data_scaler = RobustScaler(with_centering=False)

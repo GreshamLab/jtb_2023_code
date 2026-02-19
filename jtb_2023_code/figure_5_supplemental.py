@@ -574,7 +574,7 @@ def _get_fig5_data(data_obj, genes=None):
     fig3_data = data_obj.all_data.X[:, _var_idx]
 
     try:
-        fig3_data = fig3_data.A
+        fig3_data = fig3_data.toarray()
     except AttributeError:
         pass
 
