@@ -8,7 +8,7 @@ import matplotlib.patches as patches
 from sklearn.preprocessing import RobustScaler
 from sklearn.preprocessing import StandardScaler
 
-from supirfactor_dynamical import TruncRobustScaler
+from scself import TruncRobustScaler
 
 from jtb_2023_code.figure_constants import (
     INFERELATOR_DATA_FILE,
@@ -135,7 +135,7 @@ def figure_3_supplement_1_plot(save=True):
     def _get_var(x):
         scalar = StandardScaler(with_mean=False)
         scalar.fit(x)
-        return scalar.var_
+        return scalar.var_[scalar.var_ != 0]
 
     def _plot_var_hist(layer, ax):
         if f"{layer}_var" not in data.var.columns:
