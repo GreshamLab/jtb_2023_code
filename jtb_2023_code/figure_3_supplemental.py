@@ -32,48 +32,68 @@ model_labels = {
 }
 
 
+def _get_var(x):
+    scalar = StandardScaler(with_mean=False)
+    scalar.fit(x)
+    return scalar.var_
+
+
+class RobustMinScaler(RobustScaler):
+    """Applies the RobustScaler and then adjust minimum value to 0."""
+
+    def transform(self, X):
+        X = super().transform(X)
+
+        _data_min = X.min(axis=0)
+
+        try:
+            _data_min = _data_min.toarray().flatten()
+        except AttributeError:
+            pass
+
+        _min_g_zero = _data_min > 0
+
+        if np.any(_min_g_zero):
+            _mins = _data_min[_min_g_zero][None, :]
+            X[:, _min_g_zero] = X[:, _min_g_zero] - _mins
+
+        return X
+
+
 def figure_3_supplement_1_plot(save=True):
     data = ad.read_h5ad(INFERELATOR_DATA_FILE)
     prior = pd.read_csv(INFERELATOR_PRIORS_FILE, sep="\t", index_col=0)
 
-    data_scaler = RobustScaler(with_centering=False)
-    data.layers["robust_scaled"] = data_scaler.fit_transform(data.X)
-    data_scaler_v = RobustScaler(with_centering=False)
-    data.layers["robust_scaled_rapa_velocity"] = data_scaler_v.fit_transform(
-        data.layers["rapamycin_velocity"]
+    data.var['X_var'] = _get_var(data.X)
+    data.var["rapamycin_velocity_var"] = _get_var(
+            data.layers["rapamycin_velocity"]
     )
 
-    trunc_scaler = TruncRobustScaler(with_centering=False)
-    data.layers["special_scaled"] = trunc_scaler.fit_transform(data.X)
-    data.layers["special_scaled_rapa_velocity"] = trunc_scaler.fit_transform(
-        data.layers["rapamycin_velocity"]
+    data.var["robust_scaled_var"] = _get_var(
+        RobustScaler(with_centering=False).fit_transform(data.X)
+    )
+    data.var["robust_scaled_rapa_velocity_var"] = _get_var(
+        RobustScaler(with_centering=False).fit_transform(
+            data.layers["rapamycin_velocity"]
+        )
     )
 
-    class RobustMinScaler(RobustScaler):
-        """Applies the RobustScaler and then adjust minimum value to 0."""
+    data.var["special_scaled_var"] = _get_var(
+        TruncRobustScaler(with_centering=False).fit_transform(data.X)
+    )
+    data.var["special_scaled_rapa_velocity_var"] = _get_var(
+        TruncRobustScaler(with_centering=False).fit_transform(
+            data.layers["rapamycin_velocity"]
+        )
+    )
 
-        def transform(self, X):
-            X = super().transform(X)
-
-            _data_min = X.min(axis=0)
-
-            try:
-                _data_min = _data_min.toarray().flatten()
-            except AttributeError:
-                pass
-
-            _min_g_zero = _data_min > 0
-
-            if np.any(_min_g_zero):
-                _mins = _data_min[_min_g_zero][None, :]
-                X[:, _min_g_zero] = X[:, _min_g_zero] - _mins
-
-            return X
-
-    rmin_scaler = RobustMinScaler(with_centering=False, quantile_range=(1, 99))
-    data.layers["robustminscaler_scaled"] = rmin_scaler.fit_transform(data.X)
-    data.layers["robustminscaler_scaled_velocity"] = rmin_scaler.fit_transform(
-        data.layers["rapamycin_velocity"]
+    data.var["robustminscaler_scaled_var"] = _get_var(
+        RobustMinScaler(with_centering=False, quantile_range=(1, 99)).fit_transform(data.X)
+    )
+    data.var["robustminscaler_scaled_velocity_var"] = _get_var(
+        RobustMinScaler(with_centering=False, quantile_range=(1, 99)).fit_transform(
+            data.layers["rapamycin_velocity"]
+        )
     )
 
     fig, ax = plt.subplots(
@@ -132,18 +152,11 @@ def figure_3_supplement_1_plot(save=True):
         size=8,
     )
 
-    def _get_var(x):
-        scalar = StandardScaler(with_mean=False)
-        scalar.fit(x)
-        return scalar.var_[scalar.var_ != 0]
-
     def _plot_var_hist(layer, ax):
-        if f"{layer}_var" not in data.var.columns:
-            data.var[f"{layer}_var"] = _get_var(
-                data.layers[layer] if layer != "X" else data.X
-            )
 
         _vars = data.var[f"{layer}_var"].values
+        _vars = _vars[_vars != 0]
+
         ax.hist(np.log(_vars), bins=100, color="gray")
         ax.set_xlim(-10, 10)
         ax.set_xlabel("Log Variance", size=8)
