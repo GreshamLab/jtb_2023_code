@@ -108,7 +108,7 @@ CC_VELO_LAYER = 'cell_cycle_velocity'
 # Umap parameters
 UMAP_NPCS = 25
 UMAP_NNS = 25
-UMAP_MIN_DIST = None
+UMAP_MIN_DIST = 0.5
 
 # Input schematic FIGS
 FIG1B_FILE_NAME = str(SchematicFile("Figure1B_RAW.png"))
