@@ -39,7 +39,9 @@ from ..figure_constants import (
     OTHER_GROUP_COL,
     RAPA_BULK_EXPR_FILE,
     RAPA_BULK_EXPR_FILE_META_DATA_COLS,
-    RAPA_BULK_EXPR_FILE_TIMES
+    RAPA_BULK_EXPR_FILE_TIMES,
+    STANDARDIZE_V1,
+    STANDARDIZE_DEPTH
 )
 
 from .projection_common import (
@@ -59,8 +61,8 @@ from .velocity_common import calculate_velocities
 from .pseudotime_common import spearman_rho_pools, get_pca_pt
 from .process_published_data import process_all_decay_links
 from sklearn.metrics import pairwise_distances
+from scself import TruncRobustScaler
 
-NO_RP_DEPTH = 2000
 
 
 class FigureSingleCellData:
@@ -228,7 +230,7 @@ class FigureSingleCellData:
         if _first_load:
             self.apply_inplace_to_everything(
                 self._normalize,
-                n_counts=NO_RP_DEPTH
+                n_counts=STANDARDIZE_DEPTH
             )
             self.save()
 
@@ -266,23 +268,35 @@ class FigureSingleCellData:
                 ].copy()
 
     @staticmethod
-    def _normalize(adata, n_counts=NO_RP_DEPTH, method='log'):
+    def _normalize(adata, n_counts=STANDARDIZE_DEPTH, method='log', standardize_v1=STANDARDIZE_V1):
 
         if 'counts' not in adata.layers.keys():
             adata.layers["counts"] = adata.X.copy()
 
-        standardize_data(
-            adata,
-            method=method,
-            target_sum=n_counts,
-            subset_genes_for_depth=~(
-                adata.var['RP'] |
-                adata.var['RiBi']
-            )
-        )
+        # Original depth standardization
+        if standardize_v1:
+            _sc.pp.normalize_total(adata, target_sum=STANDARDIZE_DEPTH)
 
-        if (method == 'scale') or (method == 'log_scale'):
-            adata.var['scale_factor'] = adata.var['X_scale_factor']
+            if (method == 'log') or (method == 'log_scale'):
+                _sc.pp.log1p(adata)
+            if (method == 'scale') or (method == 'log_scale'):
+                scaler = TruncRobustScaler(with_centering=False)
+                adata.X = scaler.fit_transform(adata.X)
+                adata.var['scale_factor'] = scaler.scale_
+
+        else:
+            standardize_data(
+                adata,
+                method=method,
+                target_sum=n_counts,
+                subset_genes_for_depth=~(
+                    adata.var['RP'] |
+                    adata.var['RiBi']
+                )
+            )
+
+            if (method == 'scale') or (method == 'log_scale'):
+                adata.var['scale_factor'] = adata.var['X_scale_factor']
 
         return adata
 
@@ -667,7 +681,7 @@ class FigureSingleCellData:
             adata = self._normalize(
                 adata,
                 method='depth',
-                n_counts=NO_RP_DEPTH
+                n_counts=STANDARDIZE_DEPTH
             )
 
             _ifv.denoise(
@@ -741,11 +755,11 @@ class FigureSingleCellData:
                 verbose=True,
                 standardization_method='scale',
                 standardization_kwargs=dict(
-                    target_sum=NO_RP_DEPTH,
+                    target_sum=STANDARDIZE_DEPTH,
                     subset_genes_for_depth=~(
                         self.all_data.var['RP'] |
                         self.all_data.var['RiBi']
-                    )
+                    ) if not STANDARDIZE_V1 else None
                 ),
                 filter_to_hvg=True
             )
@@ -923,7 +937,7 @@ class FigureSingleCellData:
             _dists = self._normalize(
                 _dists,
                 method='scale',
-                n_counts=NO_RP_DEPTH
+                n_counts=STANDARDIZE_DEPTH
             )
 
             _dists._inplace_subset_var(self.all_data.var["leiden"] != "-1")
@@ -975,7 +989,7 @@ class FigureSingleCellData:
             _dists = self._normalize(
                 _dists,
                 method='scale',
-                n_counts=NO_RP_DEPTH
+                n_counts=STANDARDIZE_DEPTH
             )
 
             self.all_data.varp["cosine_distance"] = pairwise_distances(

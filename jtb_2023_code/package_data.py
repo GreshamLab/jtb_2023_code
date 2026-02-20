@@ -41,6 +41,8 @@ def package_data(out_file):
 
 def _data_packager(data, out_file=None):
 
+    from jtb_2023_code.utils.figure_data import FigureSingleCellData
+
     print("Creating new data object from counts")
     _all = data.all_data
 
@@ -76,11 +78,9 @@ def _data_packager(data, out_file=None):
     inf_data.layers["counts"] = inf_data.X.copy()
     inf_data.X = inf_data.X.astype(np.float32)
 
-    standardize_data(
+    FigureSingleCellData._normalize(
         inf_data,
-        method='depth',
-        target_sum=2000,
-        subset_genes_for_depth=~(inf_data.var['RP'] | inf_data.var['RiBi'])
+        method='depth'
     )
 
     # Copy decay constants and velocity from the calculated data objects

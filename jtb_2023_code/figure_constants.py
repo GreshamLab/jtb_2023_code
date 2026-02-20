@@ -17,6 +17,12 @@ SUPPLEMENTAL_FIGURE_DPI = 300
 # Print status updates
 VERBOSE = True
 
+# Standardize options
+# True is depth to 3099 total
+# False is depth to 2000, excluding RiBi, RP genes
+STANDARDIZE_V1 = True
+STANDARDIZE_DEPTH = 3099 if STANDARDIZE_V1 else 2000
+
 # Metadata for bulk expression data
 RAPA_BULK_EXPR_FILE = str(DataFile("20210312_RAPA_BULK_TIMECOURSE.tsv.gz"))
 RAPA_BULK_EXPR_FILE_META_DATA_COLS = ["Oligo", "Time", "Replicate"]
@@ -100,9 +106,9 @@ RAPA_VELO_LAYER = 'rapamycin_velocity'
 CC_VELO_LAYER = 'cell_cycle_velocity'
 
 # Umap parameters
-UMAP_NPCS = 50
-UMAP_NNS = 200
-UMAP_MIN_DIST = 0.2
+UMAP_NPCS = 25
+UMAP_NNS = 25
+UMAP_MIN_DIST = None
 
 # Input schematic FIGS
 FIG1B_FILE_NAME = str(SchematicFile("Figure1B_RAW.png"))
