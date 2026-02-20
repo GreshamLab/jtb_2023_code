@@ -728,14 +728,14 @@ class FigureSingleCellData:
                 layer="counts",
                 metric="cosine",
                 verbose=True,
-                standardization_method='scale',
+                standardization_method='log',
                 standardization_kwargs=dict(
                     target_sum=STANDARDIZE_DEPTH,
                     subset_genes_for_depth=~(
                         self.all_data.var['RP'] |
                         self.all_data.var['RiBi']
-                    ) if not STANDARDIZE_V1 else None
-                ),
+                    )
+                ) if not STANDARDIZE_V1 else dict(target_sum=STANDARDIZE_DEPTH),
                 filter_to_hvg=True
             )
 
