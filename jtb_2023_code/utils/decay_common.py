@@ -163,7 +163,7 @@ def get_decay_per_cell(data_obj, by_experiment=True):
         _iter_through = [data_obj.all_data]
 
     for dd in _iter_through:
-        _expt_idx = adata.obs_names.isin(dd.obs_names).values
+        _expt_idx = adata.obs_names.isin(dd.obs_names)
 
         print(f"Processing experiment ({np.sum(_expt_idx)} observations)")
 
