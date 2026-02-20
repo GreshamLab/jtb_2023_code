@@ -1,4 +1,5 @@
 import scanpy as _sc
+import scipy.sparse as _sps
 
 from .adata_common import (
     get_clean_anndata
@@ -7,6 +8,12 @@ from ..figure_constants import (
     VERBOSE,
     N_PCS
 )
+
+try:
+    from sparse_dot_mkl import csr_matrix
+    MKL=True
+except ImportError:
+    MKL=False
 
 
 def do_pca(adata, n_pcs, normalize=False):
@@ -24,7 +31,13 @@ def do_pca(adata, n_pcs, normalize=False):
             _sc.pp.log1p(adata)
 
         # Do PCA, kNN, and UMAP with constant parameters
-        _sc.pp.pca(adata, n_comps=n_pcs)
+
+        if MKL and _sps.isspmatrix_csr(adata.X):
+            adata.X = csr_matrix(adata.X)
+            _sc.pp.pca(adata, n_comps=n_pcs)
+            adata.X = _sps.csr_matrix(adata.X)
+        else:
+            _sc.pp.pca(adata, n_comps=n_pcs)
 
     return adata
 
@@ -50,8 +63,15 @@ def do_umap(adata, n_pcs, nns, min_dist=0.1):
                 f"and {min_dist} min_dist",
             )
 
-        _sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=nns)
-        _sc.tl.umap(adata, min_dist=min_dist)
+        if MKL and _sps.isspmatrix_csr(adata.X):
+            adata.X = csr_matrix(adata.X)
+            _sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=nns)
+            _sc.tl.umap(adata, min_dist=min_dist)
+            adata.X = _sps.csr_matrix(adata.X)
+
+        else:
+            _sc.pp.neighbors(adata, n_pcs=n_pcs, n_neighbors=nns)
+            _sc.tl.umap(adata, min_dist=min_dist)
 
     return adata
 

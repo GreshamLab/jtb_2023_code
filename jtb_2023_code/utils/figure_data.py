@@ -10,8 +10,6 @@ import scanpy as _sc
 import scipy as _sp
 import inferelator_velocity as _ifv
 
-from scself import standardize_data
-
 from ..figure_constants import (
     RAPA_SINGLE_CELL_EXPR_BY_EXPT,
     RAPA_SINGLE_CELL_EXPR_PROCESSED,
@@ -60,9 +58,9 @@ from .decay_common import (
 from .velocity_common import calculate_velocities
 from .pseudotime_common import spearman_rho_pools, get_pca_pt
 from .process_published_data import process_all_decay_links
-from sklearn.metrics import pairwise_distances
-from scself import TruncRobustScaler
+from .standardization import standardize
 
+from sklearn.metrics import pairwise_distances
 
 
 class FigureSingleCellData:
@@ -270,35 +268,12 @@ class FigureSingleCellData:
     @staticmethod
     def _normalize(adata, n_counts=STANDARDIZE_DEPTH, method='log', standardize_v1=STANDARDIZE_V1):
 
-        if 'counts' not in adata.layers.keys():
-            adata.layers["counts"] = adata.X.copy()
-
-        # Original depth standardization
-        if standardize_v1:
-            _sc.pp.normalize_total(adata, target_sum=STANDARDIZE_DEPTH)
-
-            if (method == 'log') or (method == 'log_scale'):
-                _sc.pp.log1p(adata)
-            if (method == 'scale') or (method == 'log_scale'):
-                scaler = TruncRobustScaler(with_centering=False)
-                adata.X = scaler.fit_transform(adata.X)
-                adata.var['scale_factor'] = scaler.scale_
-
-        else:
-            standardize_data(
-                adata,
-                method=method,
-                target_sum=n_counts,
-                subset_genes_for_depth=~(
-                    adata.var['RP'] |
-                    adata.var['RiBi']
-                )
-            )
-
-            if (method == 'scale') or (method == 'log_scale'):
-                adata.var['scale_factor'] = adata.var['X_scale_factor']
-
-        return adata
+        return standardize(
+            adata,
+            n_counts=n_counts,
+            method=method,
+            standardize_v1=standardize_v1
+        )
 
     def save(self):
         # Save all data

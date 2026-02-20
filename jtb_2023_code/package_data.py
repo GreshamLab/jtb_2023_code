@@ -7,7 +7,6 @@ import scanpy as sc
 import scipy.sparse as sps
 
 from jtb_2023_code.utils.figure_filenames import parse_file_path_command_line
-from scself import standardize_data
 
 
 def main():

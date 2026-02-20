@@ -254,8 +254,7 @@ def process_data_for_model(data, genes=None, wt_only=True, scale=True, scale_fac
 
     model_data = FigureSingleCellData._normalize(
         model_data,
-        method='depth',
-        n_counts=2000
+        method='depth'
     )
     
     if genes is not None and (
