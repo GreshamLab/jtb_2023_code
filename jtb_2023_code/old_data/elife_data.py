@@ -30,7 +30,7 @@ TF_LOOKUP = {
     "rtg1": "YOL067C",
     "rtg3": "YBL103C",
     "stp1": "YDR463W",
-    "stp3": "YHR006W",
+    "stp2": "YHR006W",
     "dal80": "YKR034W",
     "dal81": "YIR023W",
     "dal82": "YNL314W",
