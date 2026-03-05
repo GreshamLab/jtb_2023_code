@@ -27,7 +27,13 @@ def _plot_elife_predicts(
     _ypd = predictions[genotype][:, 0:10, _gene_idx].ravel()
 
     _rapa_tf_idx = (rapa.obs["Genotype_Group"] == genotype_common).values
-    _rapa = rapa.X[_rapa_tf_idx, _gene_idx].toarray().ravel()
+
+    _rapa = rapa.X[_rapa_tf_idx, _gene_idx]
+
+    try:
+        _rapa = _rapa.A.ravel()
+    except AttributeError:
+        _rapa = _rapa.ravel()
 
     ax.scatter(
         np.tile(np.arange(0, 60), predictions[genotype].shape[0]),
